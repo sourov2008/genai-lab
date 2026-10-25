@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI for Devs — Implementation Roadmap</title>
+<style>
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12pt; line-height: 1.45; color: #111; max-width: 900px; margin: 40px; }
+  h1 { font-size: 22pt; margin-bottom: 8px; }
+  h2 { font-size: 16pt; margin-top: 28px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  h3 { font-size: 13pt; margin-top: 18px; }
+  p, li { margin: 8px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 11pt; }
+  th, td { border: 1px solid #bbb; padding: 6px 8px; vertical-align: top; text-align: left; }
+  th { background: #eee; }
+  .meta { color: #444; font-size: 11pt; }
+  .callout { background: #f4f4f4; border-left: 4px solid #333; padding: 10px 14px; margin: 14px 0; }
+  code { font-family: Menlo, Consolas, monospace; font-size: 10.5pt; }
+  ul { margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>AI for Devs — Implementation Roadmap</h1>
+<p class="meta">
+  MSIT GmbH · Vollzeit · Software Engineering · Role Track: AI for Developers · Modules 1–6<br>
+  DKZ 43414 · 6 modules × 200 UE × 4 weeks = <strong>1,200 UE / 24 weeks</strong> (~37.5 hours/week if 1 UE = 45 minutes)<br>
+  Source syllabus: <em>AI for Devs_6 modules - Vollzeit</em> · joinmsit.de · ℅ Mindspace, Münzstr. 12, 10178 Berlin
+</p>
+
+<div class="callout">
+  <strong>Operating rule.</strong> Do not treat this as six separate courses. Module 1 is literacy. Modules 2–6 are sequential releases of the <em>same</em> app: schema → CRUD → LLM → UI/deploy → auth/agents → RAG/pitch. Freeze the product domain by Friday of week 4.
+</div>
+
+<h2>1. How to implement the syllabus</h2>
+<p>Run one private GitHub repo (suggested name: <code>genai-capstone</code>) from week 5 onward. Every taught topic should land as a commit on that product, not as a throwaway notebook—except Module 1 labs, which live in a separate <code>genai-lab</code> repo.</p>
+
+<p><strong>Week 0 setup (before or during week 1):</strong> GitHub account, Cursor, Python 3.12, Docker Desktop, OpenAI API key, Gemini API key, Postgres via Docker. Create <code>.cursor/rules</code> for secret handling and “no business logic in routes”. Never commit <code>.env</code>.</p>
+
+<p><strong>Default stack:</strong> FastAPI (Flask if the classroom requires it), SQLAlchemy 2, Postgres, Alembic, Pydantic, Jinja2 + Bootstrap, OpenAI + Gemini adapters, Render, pytest, Langfuse (or equivalent tracing), Chroma or pgvector, n8n.</p>
+
+<p><strong>Full-time daily cadence (~7.5h):</strong></p>
+<table>
+  <tr><th>Block</th><th>Duration</th><th>Default use</th></tr>
+  <tr><td>09:00–12:30</td><td>3.5h</td><td>Taught content, reading, short labs</td></tr>
+  <tr><td>13:30–17:00</td><td>3.5h</td><td>Same-day implementation on the product repo</td></tr>
+  <tr><td>17:00–17:30</td><td>0.5h</td><td>Git commit, prompt log, blockers for tomorrow</td></tr>
+</table>
+
+<p><strong>Indicative weekly effort split (hours, heuristic — not official Stundenplan):</strong></p>
+<table>
+  <tr><th>Module</th><th>Learning / labs</th><th>Product build</th><th>Eval / career</th></tr>
+  <tr><td>M1 Foundations</td><td>22</td><td>8</td><td>7.5</td></tr>
+  <tr><td>M2 Backend</td><td>12</td><td>20</td><td>5.5</td></tr>
+  <tr><td>M3 LLM</td><td>10</td><td>22</td><td>5.5</td></tr>
+  <tr><td>M4 Ship</td><td>8</td><td>22</td><td>7.5</td></tr>
+  <tr><td>M5 Harden</td><td>10</td><td>20</td><td>7.5</td></tr>
+  <tr><td>M6 RAG / Pitch</td><td>8</td><td>18</td><td>11.5</td></tr>
+</table>
+
+<h2>2. Program map</h2>
+<table>
+  <tr><th>Weeks</th><th>School module</th><th>Focus</th><th>Exit gate</th></tr>
+  <tr><td>1–4</td><td>Advanced 3</td><td>Foundations</td><td>Lab repo + product one-pager</td></tr>
+  <tr><td>5–8</td><td>Advanced 4</td><td>Project spine</td><td>CRUD API + schema + ethics notes</td></tr>
+  <tr><td>9–12</td><td>Advanced 5</td><td>LLM in product</td><td>Generate + structured persist</td></tr>
+  <tr><td>13–16</td><td>Advanced 6</td><td>Ship it</td><td>UI + cloud + provider comparison</td></tr>
+  <tr><td>17–20</td><td>Advanced 7</td><td>Harden + agents</td><td>JWT, tests, traces, n8n</td></tr>
+  <tr><td>21–24</td><td>Advanced 8</td><td>RAG + portfolio</td><td>RAG app + pitch + applications</td></tr>
+</table>
+
+<p><strong>Suggested repo layout (start week 5):</strong><br>
+<code>app/</code> routers · services · models · schemas · prompts · <code>alembic/</code> · <code>evals/</code> · <code>frontend/templates</code> · <code>tests/</code> · <code>n8n/</code> · <code>docs/</code> · <code>.env.example</code></p>
+
+<h2>3. Capstone shape</h2>
+<p>Pick a narrow job-to-be-done with documents and structured records. Example domains: study coach, grant screener, meeting-to-tickets, clinical-admin summarizer (non-diagnostic), internal policy Q&amp;A.</p>
+<p><strong>Must exist by week 16 (MVP):</strong> users, generation jobs, versioned prompts, structured artifacts in Postgres, HTML UI, deployed URL, Swagger, provider adapter.</p>
+<p><strong>Must exist by week 24 (v1):</strong> JWT, tests in CI, traces, one tool-using agent, n8n helper, RAG with citations, eval report, pitch deck, public README.</p>
+
+<hr>
+
+<h2>Module 1 — Advanced 3: Introduction to Generative AI</h2>
+<p class="meta">Weeks 1–4 · 200 UE · Theme: foundations before the product</p>
+<p><strong>Exit outcome:</strong> Explain LLM capabilities and limits, ship quality prompts in Cursor/Copilot, call OpenAI and Gemini from code, and freeze a portfolio product idea.</p>
+<p><strong>Stack:</strong> Python 3.12, Cursor, OpenAI SDK, Google GenAI SDK, optional Flask.</p>
+<div class="callout"><strong>Gate:</strong> Written product one-pager + 3 working API notebook/scripts.</div>
+<p><strong>Deliverable:</strong> Personal GenAI lab repo + product one-pager used as the spec for Modules 2–6.</p>
+<p><strong>Day shape:</strong> Morning: concept + short lab. Afternoon: API drills in Cursor. End of day: 5-line learning log and saved prompt snippets.</p>
+
+<h3>Week-by-week</h3>
+<table>
+  <tr><th>Week</th><th>Theme</th><th>Teach / practice</th><th>You ship</th></tr>
+  <tr><td>W1</td><td>GenAI + NLP map</td><td>Tokens, embeddings vs generation, transformer intuition, hallucination, context windows, safety.</td><td>Glossary + 10-prompt lab in Cursor (system / user / few-shot).</td></tr>
+  <tr><td>W2</td><td>LLM product thinking</td><td>Use cases that fit LLMs vs classical ML. Cost, latency, eval. Copilot/Cursor workflows for real coding.</td><td>Rebuild a small CLI using the assistant; document what you still had to verify.</td></tr>
+  <tr><td>W3</td><td>Master LLM APIs</td><td>OpenAI + Gemini: auth, chat completions, temperature, max tokens, JSON mode, streaming, errors, rate limits.</td><td>Same task on both providers; comparison table of quality, cost, latency.</td></tr>
+  <tr><td>W4</td><td>Portfolio planning + optional Python</td><td>Pick one AI product. Scope MVP vs v2. Fill Python / OOP / Flask / SQLAlchemy gaps if needed.</td><td>One-pager: problem, user, AI job, non-goals, data, APIs, 4-week MVP slice.</td></tr>
+</table>
+
+<h3>How to implement this module</h3>
+<ul>
+  <li>Treat Cursor as the primary IDE from day 1: rules, composer, inline edit, and review of diffs.</li>
+  <li>Never paste secrets: <code>.env</code> + <code>.gitignore</code>; rotate keys if they leak.</li>
+  <li>Optional Python track is not extra credit if you are weak on HTTP, classes, or SQL — do it in weeks 3–4 mornings.</li>
+  <li>Freeze the product domain by Friday of week 4. Changing later burns Module 2.</li>
+</ul>
+<p><strong>Optional Python catch-up:</strong> functions → OOP → virtualenv → Flask hello world → SQLAlchemy one-to-many. Do not let catch-up delay the product one-pager.</p>
+
+<h2>Module 2 — Advanced 4: Introduction to your AI software project</h2>
+<p class="meta">Weeks 5–8 · 200 UE · Theme: ethics, agents, then a real backend</p>
+<p><strong>Exit outcome:</strong> Frame an ethical AI MVP, sketch agents/observability, design the schema, and ship a FastAPI/Flask service with CRUD.</p>
+<p><strong>Stack:</strong> FastAPI (preferred) or Flask, SQLAlchemy, Postgres, Alembic, Pydantic, pytest skeleton.</p>
+<div class="callout"><strong>Gate:</strong> Running API with migrations + README that a classmate can clone and boot.</div>
+<p><strong>Deliverable:</strong> MVP backend v0: Docker Compose, migrations, CRUD, ethics notes. No LLM in the production path yet.</p>
+<p><strong>Day shape:</strong> Morning: design or ethics reading. Afternoon: implement one vertical slice (model → schema → route → test).</p>
+
+<h3>Week-by-week</h3>
+<table>
+  <tr><th>Week</th><th>Theme</th><th>Teach / practice</th><th>You ship</th></tr>
+  <tr><td>W5</td><td>Ethics + agent literacy</td><td>Bias, PII, copyright, over-reliance, EU AI Act awareness. Agents vs single-shot LLM. What to log and evaluate.</td><td>Ethics appendix in the one-pager: data classes, consent, failure modes, human-in-the-loop.</td></tr>
+  <tr><td>W6</td><td>MVP phase 1 — idea and schema</td><td>User stories, acceptance criteria, entity-relationship diagram, API resource list.</td><td>ERD + OpenAPI stub for 3–5 core resources (User, Session/Job, PromptRun, Artifact).</td></tr>
+  <tr><td>W7</td><td>Framework and project skeleton</td><td>Layered layout: routers, services, models, schemas, config. Docker Compose for Postgres.</td><td>Healthcheck endpoint, Alembic init, seed script, optional pre-commit/ruff.</td></tr>
+  <tr><td>W8</td><td>CRUD for core resources</td><td>List/create/get/update/delete without LLM calls yet. Validation and 404/409 behavior.</td><td>HTTP collection of all CRUD paths; screenshot of DB tables with seed data.</td></tr>
+</table>
+
+<h3>How to implement this module</h3>
+<ul>
+  <li>Prefer FastAPI + Pydantic for typed contracts; Flask is allowed if that is the class default.</li>
+  <li>Model <code>PromptRun</code> early even if generation comes next module — you will persist prompts, raw output, and structured JSON.</li>
+  <li>Keep agents conceptual this month: one sequence diagram of a future agent, not LangGraph in production.</li>
+  <li>Observability stub: <code>request_id</code> + structured logs. Full tracing waits until Module 5.</li>
+</ul>
+
+<h2>Module 3 — Advanced 5: Prompting and API integration</h2>
+<p class="meta">Weeks 9–12 · 200 UE · Theme: LLM in the request path</p>
+<p><strong>Exit outcome:</strong> Connect the DB to a live generation endpoint, iterate prompts, and persist structured outputs.</p>
+<p><strong>Stack:</strong> Provider SDKs, JSON schema / structured output, optional background jobs, prompt version table.</p>
+<div class="callout"><strong>Gate:</strong> <code>POST /generate</code> creates a DB row with prompt version, raw text, parsed JSON, and model metadata.</div>
+<p><strong>Deliverable:</strong> Generation feature with versioned prompts and persisted structured artifacts.</p>
+<p><strong>Day shape:</strong> Morning: prompt experiments in a notebook or playground, then port winners into code. Afternoon: productionize the winner.</p>
+
+<h3>Week-by-week</h3>
+<table>
+  <tr><th>Week</th><th>Theme</th><th>Teach / practice</th><th>You ship</th></tr>
+  <tr><td>W9</td><td>MVP phase 2 — wire CRUD to DB</td><td>Harden endpoints, pagination, filters. Fix N+1 and missing indexes.</td><td>Happy-path and error-path tests for every resource.</td></tr>
+  <tr><td>W10</td><td>Text-generation endpoint</td><td>Service that calls OpenAI or Gemini. Timeouts, retries, redaction of secrets in logs.</td><td>One generation flow end-to-end from HTTP to stored result.</td></tr>
+  <tr><td>W11</td><td>Prompt iteration</td><td>System vs user prompts, few-shot, constraints, refusal handling. A/B two prompt versions.</td><td>Prompt changelog with 10 example inputs and judged outputs.</td></tr>
+  <tr><td>W12</td><td>Structured outputs</td><td>JSON schema / response_format. Validate with Pydantic. Store both raw and parsed.</td><td>Invalid JSON path: retry once, then save failure status — never crash the API.</td></tr>
+</table>
+
+<h3>How to implement this module</h3>
+<ul>
+  <li>Prompts live in versioned files or a <code>prompt_versions</code> table — not hardcoded only in a route.</li>
+  <li>Always store model name, temperature, token usage, <code>latency_ms</code>, and <code>prompt_version_id</code>.</li>
+  <li>Keep a golden set of 15 inputs. Re-run after every prompt change.</li>
+  <li>Do not block the HTTP worker on long generations if jobs exceed ~15s — add a job status field now even if sync is still OK.</li>
+</ul>
+
+<h2>Module 4 — Advanced 6: Advanced GenAI</h2>
+<p class="meta">Weeks 13–16 · 200 UE · Theme: UI, cloud, and provider science</p>
+<p><strong>Exit outcome:</strong> Give the product a usable UI, deploy it, document the API, and compare providers/hyperparameters with logs.</p>
+<p><strong>Stack:</strong> Jinja2 + Bootstrap (or HTMX), Render or Vercel, Swagger/OpenAPI, structured logging.</p>
+<div class="callout"><strong>Gate:</strong> Public URL + Swagger + demo script of 3 user flows.</div>
+<p><strong>Deliverable:</strong> Deployed GenAI MVP with docs, logs, and a written provider comparison.</p>
+<p><strong>Day shape:</strong> Morning: UI or deploy friction. Afternoon: evaluation runs. Friday: record a 3-minute demo video.</p>
+
+<h3>Week-by-week</h3>
+<table>
+  <tr><th>Week</th><th>Theme</th><th>Teach / practice</th><th>You ship</th></tr>
+  <tr><td>W13</td><td>MVP phase 3 — HTML UI</td><td>Templates for list/detail/create. Bootstrap layout. Show generation status and artifacts.</td><td>Unauthenticated local UI that a non-engineer can use.</td></tr>
+  <tr><td>W14</td><td>Deploy + Swagger</td><td>Render (API+DB) or split Vercel static + API. Env vars, HTTPS, healthcheck. OpenAPI published.</td><td>README with live URL, architecture diagram, and how to rotate keys.</td></tr>
+  <tr><td>W15</td><td>Hyperparameters + logging</td><td>Sweep temperature and max_completion_tokens on the golden set. Log every run.</td><td>Table: setting vs quality vs cost vs latency. Pick defaults for production.</td></tr>
+  <tr><td>W16</td><td>Cross-provider prompting</td><td>Same prompt pack on OpenAI and Gemini. Note instruction-following differences.</td><td>Provider adapter interface so switching models is a config change.</td></tr>
+</table>
+
+<h3>How to implement this module</h3>
+<ul>
+  <li>HTML templating is the syllabus default — do not jump to a heavy SPA unless the UI is already done.</li>
+  <li>Never deploy API keys in the frontend. Server-side only.</li>
+  <li>Swagger must match real request/response examples from production.</li>
+  <li>Hyperparameter work is evidence for the final pitch: screenshots and CSVs in <code>/evals</code>.</li>
+</ul>
+
+<h2>Module 5 — Advanced 7: Optional v2 features and AI productivity</h2>
+<p class="meta">Weeks 17–20 · 200 UE · Theme: hardening + agentic + ops</p>
+<p><strong>Exit outcome:</strong> Add JWT auth, tests, embeddings, tracing, a small agentic flow, and an n8n automation that saves you time.</p>
+<p><strong>Stack:</strong> JWT, pytest + httpx, OpenTelemetry or Langfuse, embeddings API, n8n.</p>
+<div class="callout"><strong>Gate:</strong> Authenticated API, CI tests green, one traced agent path, one live n8n workflow.</div>
+<p><strong>Deliverable:</strong> v1.5 product: secure, tested, observable, with one agent and one automation.</p>
+<p><strong>Day shape:</strong> Morning: hardening (auth/tests). Afternoon: agent or n8n. Do not start RAG until Module 6 unless the embeddings lab is done.</p>
+
+<h3>Week-by-week</h3>
+<table>
+  <tr><th>Week</th><th>Theme</th><th>Teach / practice</th><th>You ship</th></tr>
+  <tr><td>W17</td><td>Agents and agentic flows</td><td>Tool calling, planner/executor, loop limits, human approval for irreversible actions.</td><td>One agent that uses 2–3 tools (DB lookup, web/search stub, generator) with a max-step cap.</td></tr>
+  <tr><td>W18</td><td>JWT + testing</td><td>Register/login, protected routes, password hashing. Unit tests for services, API tests for routes.</td><td>CI (GitHub Actions) runs pytest on every push.</td></tr>
+  <tr><td>W19</td><td>Embeddings + tracing</td><td>Text preprocessing, embedding a few records, cosine similarity prototype. Trace LLM spans.</td><td>Langfuse or equivalent: you can click one user request and see prompts and tokens.</td></tr>
+  <tr><td>W20</td><td>n8n productivity</td><td>Automate something real: daily eval digest, error webhook, or content intake into your app.</td><td>Exported n8n workflow JSON in the repo plus a short SOP.</td></tr>
+</table>
+
+<h3>How to implement this module</h3>
+<ul>
+  <li>An agent without eval is a demo toy — log tool calls and final answer quality on 10 scenarios.</li>
+  <li>JWT in httpOnly cookies or Authorization header; document both for Swagger.</li>
+  <li>n8n is for leverage (notifications, ETL, scheduling), not a replacement for the core app.</li>
+  <li>Embeddings this week are a stepping stone to RAG, not a full vector database yet.</li>
+</ul>
+
+<h2>Module 6 — Advanced 8: v2 features and portfolio finalization</h2>
+<p class="meta">Weeks 21–24 · 200 UE · Theme: RAG, local models, eval, pitch</p>
+<p><strong>Exit outcome:</strong> Ship a working RAG path, optional local model, evaluation report, and a career-ready pitch with live demo.</p>
+<p><strong>Stack:</strong> Chroma/pgvector, chunking pipeline, Ollama optional, eval harness, slide deck.</p>
+<div class="callout"><strong>Gate:</strong> Live demo of RAG + generation; 8-minute pitch; public repo and deployed app.</div>
+<p><strong>Deliverable:</strong> Fully functional GenAI app, eval evidence, presentation, and application-phase materials.</p>
+<p><strong>Day shape:</strong> Morning: RAG/eval engineering. Afternoon: product polish or career artifacts. Last three days: rehearsal only.</p>
+
+<h3>Week-by-week</h3>
+<table>
+  <tr><th>Week</th><th>Theme</th><th>Teach / practice</th><th>You ship</th></tr>
+  <tr><td>W21</td><td>Local models + RAG ingest</td><td>Ollama or similar for a small local client. Document loaders, chunk sizes, overlap, metadata.</td><td>Ingest 10–50 domain documents into a vector store with source citations.</td></tr>
+  <tr><td>W22</td><td>RAG query path</td><td>Retrieve k chunks, ground the prompt, return citations. Handle empty retrieval.</td><td>UI shows answer + sources. Toggle RAG on/off for comparison.</td></tr>
+  <tr><td>W23</td><td>Fine-tune awareness + eval</td><td>When fine-tuning is vs is not worth it. Run LLM-as-judge or rubric eval on RAG and non-RAG.</td><td>Eval report: faithfulness, relevance, latency, cost. Fine-tune only if data and time exist.</td></tr>
+  <tr><td>W24</td><td>Finalize + present + career</td><td>Polish UX, README, architecture, limitations. Pitch + live demo. CV/LinkedIn/applications.</td><td>Final tag v1.0, recorded demo, one-pager, and application tracker started.</td></tr>
+</table>
+
+<h3>How to implement this module</h3>
+<ul>
+  <li>RAG quality comes from chunking and metadata more than from the fancy vector DB brand.</li>
+  <li>Fine-tuning is optional and easy to overrun — default to RAG + better prompts unless the school requires a tune job.</li>
+  <li>Pitch structure: problem, user, demo, architecture, eval numbers, ethics, next 90 days.</li>
+  <li>Career week is part of the module: 10 targeted applications beat a perfect extra feature.</li>
+</ul>
+
+<h2>4. Final presentation checklist (week 24)</h2>
+<ul>
+  <li>Problem, user, and why an LLM is the right tool (90 seconds).</li>
+  <li>Live demo: CRUD, generate, RAG citation, auth-protected path.</li>
+  <li>Architecture slide: request path, models, vector store, eval.</li>
+  <li>Numbers: latency, approx. cost/request, eval rubric scores.</li>
+  <li>Ethics: data, failure modes, human review.</li>
+  <li>Limits and 90-day roadmap. Repo + deployed URL on the last slide.</li>
+</ul>
+
+<h2>5. What not to do</h2>
+<ul>
+  <li>Do not start a full RAG pipeline before Module 6.</li>
+  <li>Do not put API keys in the frontend.</li>
+  <li>Do not change the product domain after week 4.</li>
+  <li>Do not skip eval tables — they are evidence for the pitch.</li>
+</ul>
+
+<p class="meta">This document is a study guide for implementing the MSIT syllabus, not an official Stundenplan.</p>
+
+</body>
+</html>
