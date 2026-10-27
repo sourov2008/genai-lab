@@ -99,3 +99,23 @@
 ## 25. JSON Mode
 **Definition:** A feature in LLM APIs that guarantees the model will output a valid JSON object instead of plain text.
 **Why it matters:** It is essential for connecting LLMs to code, as applications can reliably parse structured JSON data.
+
+## 26. Rate Limit
+**সংজ্ঞা:** নির্দিষ্ট সময়ে কত request পাঠাতে পারবে তার সীমা (যেমন: ৬০/min)।
+**কেন দরকার:** ছাড়িয়ে গেলে 429 error আসে — retry logic লাগবে।
+
+## 27. JSON Mode
+**সংজ্ঞা:** মডেলকে বাধ্য করা শুধু valid JSON আউটপুট দিতে (Markdown/ন্যারেটিভ ছাড়া)।
+**কেন দরকার:** Structured extraction-এর জন্য — ClauseDesk-এর মূল ভিত্তি।
+
+## 28. Prompt Versioning
+**সংজ্ঞা:** প্রম্পটের প্রতিটা version সংরক্ষণ — কে কখন কী বদলালো।
+**কেন দরকার:** A/B test এবং regression ধরা — W11-এর কাজ।
+
+## 29. Provider Adapter
+**সংজ্ঞা:** একটা interface যার পিছনে OpenAI, Gemini, বা Ollama — যেকোনো provider।
+**কেন দরকার:** .env-এ এক লাইনে provider switch — কোড বদলাবে না।
+
+## 30. Retry
+**সংজ্ঞা:** ব্যর্থ request আবার পাঠানো — সাধারণত ১–২ বার, exponential backoff দিয়ে।
+**কেন দরকার:** Network error, rate limit, invalid JSON — সবখানে।
