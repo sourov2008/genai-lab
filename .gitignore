@@ -51,3 +51,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+
+# Ignore nested capstone repo (managed separately)
+clausedesk/
