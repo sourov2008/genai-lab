@@ -30,8 +30,7 @@ but have no in-house legal team to review them.
 **LLM does:**
 - Reads contract text (temperature=0.0, single call — context window 
   guard rejects contracts >80% of model limit; chunking is v2/W21)
-- Extracts 8 clause types as structured JSON: 
-  `{clause_type, quote, confidence}`
+- Extracts 8 clause types as structured JSON using OpenAI's **strict schema enforcement** (guarantees no parsing errors): `{clause_type, quote, confidence}`.
 - Returns `clause_type="none"` with high confidence (≥0.9) when truly 
   absent; low-confidence "none" → review queue
 
@@ -54,17 +53,18 @@ but have no in-house legal team to review them.
 - Celery/Redis queue for bulk uploads (>10 concurrent) — W5-W8 sync only
 
 **[W16] Provider robustness:**
-- Gemini 5xx → Groq fallback (configurable)
-- W9-W12: single-provider per call
+- Primary: OpenAI (`gpt-4o-mini`) for strict schema guarantee.
+- Fallback: Groq (`openai/gpt-oss-120b`) for ultra-fast free tier.
+- OpenAI 5xx/429 → Groq fallback (configurable).
 
 **Human does:**
 - Reviews flagged clauses (accept / reject / edit)
 - Makes the final decision — the system never says "sign this"
 
 **SLA targets (validated against W3D1 baseline):**
-- Latency: <10s per contract (baseline: 750ms Gemini, 1.6s Groq)
-- Cost: <$0.01 per extraction (baseline: <$0.001 free tier)
-- Measured W16 (provider comparison), reported W23 (eval)
+- Latency: <10s per contract (baseline: ~800ms OpenAI, 1.6s Groq).
+- Cost: <$0.01 per extraction (OpenAI paid tier / Groq free tier).
+- Measured W16 (provider comparison), reported W23 (eval).
 
 **Deferred to later weeks:**
 - Chunking for >80% context window → W21 (with RAG)
@@ -120,7 +120,7 @@ Used only for manual sanity checks, not automated eval.
 | `GET`    | `/contracts/{id}/report`    | Download final PDF report |
 
 **Auth:** JWT (W18).
-**Provider:** `.env` switch (`LLM_PROVIDER=gemini|groq`).
+**Provider:** `.env` switch (`LLM_PROVIDER=openai|groq`).
 **Observability:** every LLM call persists provider, model, tokens, 
 cost, latency, prompt_version_id.
 
@@ -180,3 +180,45 @@ verification, review routing.
 ## 10. Architecture (W5 start)
 
 **Layers (one-way dependency):**
+routers/ → FastAPI endpoints (request/response only)
+services/ → business logic, verification, review routing
+llm/ → provider abstraction, errors, factory, prompts
+db/ → SQLAlchemy models, Alembic migrations
+core/ → config, security, global settings
+
+
+**Stack:**
+- **Backend:** FastAPI · Postgres · SQLAlchemy 2.0 · Alembic · Pydantic v2
+- **LLM:** OpenAI (strict schema) + Groq (free fallback) adapters (provider-agnostic `LLMProvider` ABC)
+- **Frontend:** Jinja2 + Bootstrap
+- **Vectors:** pgvector (W21)
+- **Eval/tracing:** pytest · Langfuse (W19)
+- **Automation:** n8n (W20)
+- **Deploy:** Render (W14)
+
+**Rules (enforced via `.cursor/rules/`):**
+- No business logic in routers
+- No provider SDK imports outside `app/llm/`
+- No hardcoded prompts — use `load_prompt()`
+- Every LLM call logs cost + latency + `prompt_version_id`
+- Embeddings provider independent of LLM provider
+
+---
+
+## 11. Success metrics (W24 pitch)
+
+**Quality (measured W23):**
+- Per-clause-type precision/recall on CUAD (50 contracts)
+- Citation verification rate (exact substring match %)
+- RAG on/off faithfulness comparison
+
+**Operational (measured W16):**
+- P50 / P95 latency per contract
+- Cost per contract (USD)
+- Review queue rate (% of clauses flagged for human review)
+
+**Product:**
+- Time-to-decision for a freelance developer: target <5 min vs 40 min baseline
+- User acceptance rate on flagged clauses (if user tests available)
+
+
