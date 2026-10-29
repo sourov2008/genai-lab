@@ -1,0 +1,21 @@
+---
+description: Python conventions
+globs: ["**/*.py"]
+alwaysApply: true
+---
+
+# Python
+
+- Python 3.12+. `from __future__ import annotations` in all modules.
+- Type hints on ALL public functions and methods.
+- Pydantic v2: `model_validate()`, `model_dump()`, `Field()`.
+  No `.dict()` or `.parse_obj()`.
+- SQLAlchemy 2.0: `Mapped[T]`, `mapped_column()`. No legacy `Column()`.
+- `pathlib.Path` over `os.path`.
+- `encoding="utf-8"` explicit on all file I/O.
+- `logging`, never `print`. Module-level:
+  `logger = logging.getLogger(__name__)`.
+- `ruff` for lint and format. Do not configure `black`, `isort`, or
+  `flake8`.
+- Async everywhere for I/O: `async def`, `await`, `AsyncSession`.
+- Use `httpx.AsyncClient` for HTTP, never `requests`.

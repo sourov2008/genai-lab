@@ -1,0 +1,47 @@
+---
+description: ClauseDesk project context and constraints
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# ClauseDesk
+
+Contract clause extraction with verified citations.
+NOT a chatbot. NOT legal advice.
+
+## Core principle
+**LLM reads. Code verifies. Human decides.**
+
+## Current implementation state
+Backend skeleton only. The LLM layer does not exist yet — rules in
+`30-llm.mdc` describe the target architecture for when it is added.
+
+## v1 scope
+Upload contract → extract 8 clause types → verify quotes → review queue →
+export report.
+
+## 8 clause types (only these in v1)
+`termination`, `liability_cap`, `governing_law`, `payment_terms`,
+`confidentiality`, `ip_ownership`, `renewal`, `non_compete`
+
+## Out of scope — never build (whole project)
+- Legal advice or interpretation of clauses
+- Chat interface
+- Mobile app
+- Payment processing
+- Contract drafting or editing
+- German law contracts (US commercial contracts only)
+- More than 8 clause types
+
+## Out of scope — deferred (not in v1)
+- RAG (retrieval-augmented generation), embeddings, or vector stores
+- Multi-step agents, tool-calling, planner/executor loops
+- Async job queues (Celery, Redis, FastAPI BackgroundTasks)
+- Provider fallback logic (single provider per call)
+- Auto-approve of high-confidence clauses (human review always required)
+
+## Data scope
+- Primary evaluation set: CUAD (public, CC BY 4.0, English US
+  commercial contracts)
+- User uploads: stored 30 days, then deleted
+- No contract text sent to LLM for training

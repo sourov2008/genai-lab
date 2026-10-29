@@ -1,0 +1,43 @@
+---
+description: Layered architecture — dependencies flow one way
+globs: ["app/**/*.py"]
+alwaysApply: true
+---
+
+# Architecture
+
+## Layers (one-way dependency)
+
+```
+routers → services → models/db
+                  → llm
+core (config, security) — used by all, imports nothing from above
+```
+
+## Layer rules
+- **routers/**: HTTP parsing, request validation (via Pydantic schemas),
+  DI, response shaping. No business logic.
+- **services/**: All business logic. No FastAPI imports. Receives
+  `AsyncSession` and `LLMProvider` via constructor.
+- **models/**: SQLAlchemy only. No service or router imports.
+- **llm/**: Provider-agnostic interface. No FastAPI or Pydantic
+  request types.
+- **core/**: Config, security. No domain logic.
+
+## Forbidden imports
+- `from app.routers import ...` inside `services/` or `models/`
+- `from app.services import ...` inside `models/`
+- `import openai` or `from groq import ...` outside `app/llm/`
+- `from fastapi import ...` inside `services/`, `models/`, or `llm/`
+- Hardcoded secrets anywhere — use `core.config.get_settings()`
+
+## Dependency injection (FastAPI `Depends`)
+- `get_settings() -> Settings`
+- `get_db() -> AsyncSession`
+- `get_llm() -> LLMProvider`
+- `get_current_user() -> User`
+
+## Rule of thumb
+If a function reads/writes HTTP → `routers/`.
+If it makes business decisions → `services/`.
+If it defines data shape → `models/` or `schemas/`.

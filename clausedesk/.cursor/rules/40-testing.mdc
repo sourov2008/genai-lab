@@ -1,0 +1,32 @@
+---
+description: Testing strategy
+globs: ["tests/**/*.py"]
+alwaysApply: true
+---
+
+# Testing
+
+## Tooling
+- `pytest` + `pytest-asyncio` (auto mode via `pyproject.toml`).
+- `httpx.AsyncClient` for API tests.
+- `FakeLLMProvider` for LLM-dependent tests — no network calls.
+
+## Structure
+- `tests/unit/` — service logic with fakes; no DB, no network.
+- `tests/integration/` — real DB (testcontainers or SQLite),
+  real API routes.
+
+## Naming
+`test_<what>_<condition>_<expected>`
+Example: `test_extract_with_empty_contract_returns_empty_list`
+
+## Coverage rule
+Every public service method: at least one happy-path test and one
+error-path test.
+
+## Never
+- Network calls in any test.
+- `time.sleep()` — use `await asyncio.sleep()` only if timing-critical.
+- `assert result` — use `assert result == expected` or
+  `assert result is not None`.
+- Shared mutable state between tests (use function-scoped fixtures).

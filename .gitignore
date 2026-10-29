@@ -31,6 +31,8 @@ faiss_index/
 
 # Local Models if download HuggingFace/Ollama
 models/
+!clausedesk/app/models/
+!clausedesk/app/models/**
 *.bin
 *.safetensors
 *.gguf

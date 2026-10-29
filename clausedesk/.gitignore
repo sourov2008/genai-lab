@@ -1,0 +1,63 @@
+# ==========================================
+# 1. Secrets & API Keys 
+# ==========================================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.json
+
+# ==========================================
+# 2. Python & Virtual Environments
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ==========================================
+# 3. AI & Data (Big files and local data)
+# ==========================================
+# Vector Database 
+chroma_db/
+faiss_index/
+*.sqlite
+*.sqlite3
+*.db
+
+# Local Models (HuggingFace/Ollama)
+models/
+!app/models/
+!app/models/**
+*.bin
+*.safetensors
+*.gguf
+
+# Large Data Files
+data/raw/
+data/processed/
+*.csv
+*.parquet
+
+# ==========================================
+# 4. OS & IDE (System files)
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Cursor AI (Rules will be tracked, chat history ignored)
+.cursor/*
+!.cursor/rules/
+
+# Logs
+*.log
