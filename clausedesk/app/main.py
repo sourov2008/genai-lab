@@ -14,7 +14,7 @@ from app.db.session import get_engine
 
 logger = logging.getLogger("clausedesk")
 
-
+# TODO: Refactor deprecated asynccontextmanager.
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()

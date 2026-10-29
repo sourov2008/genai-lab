@@ -30,7 +30,7 @@ class Settings(BaseSettings):
         alias="DATABASE_URL",
     )
 
-# FIXME: Currently we are using hardcoded string. Need to use Constant instead.
+# TODO: Refactor hardcoded default values into centralized constants.
 
     llm_provider: str = Field(default="openai", alias="LLM_PROVIDER")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
