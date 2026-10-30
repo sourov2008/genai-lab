@@ -222,3 +222,14 @@ core/ → config, security, global settings
 - User acceptance rate on flagged clauses (if user tests available)
 
 
+## 12. Ethics
+
+Full appendix: [`docs/ethics.md`](ethics.md)
+
+**Summary:**
+- Data classes: CUAD (public), user uploads (PII, 30-day retention), LLM logs (redacted).
+- Consent: explicit on upload, no training on user data.
+- Failure modes: 8 documented, all mitigated with W-tagged implementation.
+- Human-in-the-loop: never auto-approve, review queue mandatory.
+- EU AI Act: limited-risk (Art. 50 transparency), not high-risk.
+- GDPR: Art. 6(1)(b) legal basis, DPAs with OpenAI/Groq/Render.
