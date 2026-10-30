@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.session import get_engine
+from app.routers.contracts import router as contracts_router
 
 logger = logging.getLogger("clausedesk")
 
@@ -25,6 +26,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
+app.include_router(contracts_router)
 
 
 @app.get("/health", tags=["meta"])
