@@ -12,6 +12,7 @@ secrets.json
 # 2. Python & Virtual Environments
 # ==========================================
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 .venv/
