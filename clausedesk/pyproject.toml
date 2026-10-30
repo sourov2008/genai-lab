@@ -14,6 +14,7 @@ dependencies = [
     "asyncpg>=0.30",
     "datasets>=5.1.0",
     "pdfplumber>=0.11.10",
+    "aiosqlite>=0.22.1",
 ]
 
 [dependency-groups]
@@ -34,3 +35,4 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["."]
