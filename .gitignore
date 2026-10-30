@@ -3,6 +3,7 @@
 # ==========================================
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 secrets.json
@@ -17,22 +18,25 @@ __pycache__/
 venv/
 env/
 ENV/
+*.egg-info/
 .pytest_cache/
+.ruff_cache/
 .ipynb_checkpoints/
 
 # ==========================================
-# 3. AI & Data // big files and local data
+# 3. AI & Data (Big files and local data)
 # ==========================================
 # Vector Database 
 chroma_db/
 faiss_index/
 *.sqlite
 *.sqlite3
+*.db
 
-# Local Models if download HuggingFace/Ollama
+# Local Models (HuggingFace/Ollama)
 models/
-!clausedesk/app/models/
-!clausedesk/app/models/**
+!app/models/
+!app/models/**
 *.bin
 *.safetensors
 *.gguf
@@ -44,14 +48,16 @@ data/processed/
 *.parquet
 
 # ==========================================
-# 4. OS & IDE // system files
+# 4. OS & IDE (System files)
 # ==========================================
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+# Cursor AI (Rules will be tracked, chat history ignored)
+.cursor/*
+!.cursor/rules/
+
+# Logs
 *.log
-
-
-# Ignore nested capstone repo (managed separately)
-clausedesk/
