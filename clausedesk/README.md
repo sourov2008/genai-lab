@@ -1,38 +1,87 @@
-# ClauseDesk
+# ClauseDesk: Contract clause extraction with verified citations.
 
-Quoted, verified, human-reviewed contract clause extraction. Not legal advice.
+ClauseDesk reads English commercial contracts, extracts a fixed set of clause types, and keeps every result tied to a source quote. Code verifies citations; a human reviews what counts. This is not a chatbot and not a drafting tool.
 
-This repository is a scaffold. FastAPI (`app/main.py`), Pydantic Settings (`app/core/config.py`), and the async SQLAlchemy session (`app/db/session.py`) are filled in later labs.
+**Current status:** backend skeleton, SQLAlchemy models, async Alembic migrations, and a CUAD seed loader. LLM extraction starts next week.
 
-## Layout
+## Prerequisites
 
-```text
-app/           application package
-  core/        global settings
-  db/          database engine and session
-  models/      SQLAlchemy models
-  schemas/     Pydantic DTOs
-  routers/     HTTP endpoints
-  services/    business logic
-  llm/         provider adapters
-  prompts/     prompt files
-tests/         unit and integration tests
-scripts/       helpers (for example CUAD loaders)
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+- Docker Desktop
+
+## Setup
+
+1. Clone the repository and enter the project folder:
+
+```bash
+cd clausedesk
 ```
 
-## Local setup
+2. Create a local environment file:
 
 ```bash
 cp .env.example .env
-docker compose up -d
 ```
 
-Install Python dependencies after the environment file is filled in:
+Match `DATABASE_URL` to the Postgres service in `docker-compose.yml` (user `postgres`, password `postgres`, database `clausedesk`) unless you change those values.
+
+3. Create and activate a virtual environment, then install dependencies:
 
 ```bash
-python3 -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync
 ```
 
-The API entrypoint is added in Part F.2.
+4. Start Postgres:
+
+```bash
+docker compose up -d db
+```
+
+5. Apply migrations:
+
+```bash
+alembic upgrade head
+```
+
+6. Seed 50 unique CUAD contracts (idempotent):
+
+```bash
+python scripts/load_cuad.py
+```
+
+7. Run the API:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+## Verify
+
+- Health: [http://localhost:8000/health](http://localhost:8000/health) — expect `{"status": "ok", "db": "ok"}`
+- Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+## Project structure
+
+```text
+app/
+  core/        settings and shared config
+  db/          async SQLAlchemy engine and sessions
+  models/      persistence (User, Contract, Clause, PromptRun)
+  schemas/     Pydantic request/response DTOs (next)
+  routers/     HTTP endpoints only
+  services/    business logic (extraction, verification, review)
+  llm/         provider adapters (not implemented yet)
+  prompts/     versioned prompt files (not implemented yet)
+alembic/       async migrations
+scripts/       CUAD loader and other helpers
+tests/         unit and integration tests
+```
+
+Dependency flow is one-way: `routers` → `services` → `models` / `db` / `llm`. `core` is used by all layers.
+
+## Disclaimer
+
+Not legal advice. Extracted data requires human review.

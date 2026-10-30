@@ -1,1 +1,1 @@
-"""FastAPI routers. Implemented in W6."""
+"""FastAPI routers."""

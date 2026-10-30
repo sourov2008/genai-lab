@@ -1,1 +1,1 @@
-"""Business logic. Implemented in W6."""
+"""Business logic."""

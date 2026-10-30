@@ -1,1 +1,1 @@
-"""Pydantic request/response DTOs. Implemented in W6."""
+"""Pydantic request/response DTOs."""

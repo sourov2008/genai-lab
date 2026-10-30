@@ -1,1 +1,1 @@
-"""LLM provider abstraction. Implemented in W9."""
+"""LLM provider abstraction."""

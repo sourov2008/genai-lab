@@ -1,4 +1,4 @@
-"""SQLAlchemy database models. Implemented in W5D2."""
+"""SQLAlchemy database models."""
 from .base import Base
 from .user import User
 from .contract import Contract
