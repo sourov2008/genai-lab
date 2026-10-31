@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_id
@@ -56,3 +56,51 @@ async def list_contracts(
     """
     contracts = await contract_service.get_contracts(db, user_id=user_id)
     return [ContractUploadResponse.model_validate(c) for c in contracts]
+
+
+@router.get("/{contract_id}", response_model=ContractDetailResponse)
+async def get_contract(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> ContractDetailResponse:
+    """Return one contract owned by the current user.
+
+    Args:
+        contract_id: Contract primary key.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        Contract detail including source text and clauses.
+
+    Raises:
+        HTTPException: 404 if the contract is missing or not owned by the user.
+    """
+    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return ContractDetailResponse.model_validate(contract)
+
+
+@router.delete("/{contract_id}", status_code=204)
+async def delete_contract(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> None:
+    """Delete one contract owned by the current user.
+
+    Args:
+        contract_id: Contract primary key.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Raises:
+        HTTPException: 404 if the contract is missing or not owned by the user.
+    """
+    deleted = await contract_service.delete_contract(db, contract_id, user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return None
+
