@@ -1,9 +1,12 @@
+"""Manual smoke checks against a running ClauseDesk API."""
+
 import asyncio
 import httpx
 
 BASE_URL = "http://localhost:8000"
 
 async def test_get_contracts():
+    """GET `/contracts/` and print a short sample of the response."""
     print("📡 Fetching contracts from API...")
     async with httpx.AsyncClient() as client:
         # GET রিকোয়েস্ট পাঠানো হচ্ছে
@@ -20,6 +23,7 @@ async def test_get_contracts():
                 print(f"   - ID: {c['id']}, Filename: {c['filename']}")
 
 async def test_post_contract():
+    """POST a sample contract as form data to `/contracts/`."""
     print("\n📤 Sending new contract to API...")
     # Form ডেটা তৈরি (JSON নয়, কারণ আমরা Form(...) ব্যবহার করেছি)
     payload = {
@@ -40,6 +44,7 @@ async def test_post_contract():
             print(f"   - Status: {new_contract['status']}")
 
 async def main():
+    """Run GET then POST smoke checks against localhost."""
     # একটার পর একটা ফাংশন রান করা হচ্ছে
     await test_get_contracts()
     await test_post_contract()

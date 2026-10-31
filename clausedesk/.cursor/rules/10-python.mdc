@@ -19,3 +19,4 @@ alwaysApply: true
   `flake8`.
 - Async everywhere for I/O: `async def`, `await`, `AsyncSession`.
 - Use `httpx.AsyncClient` for HTTP, never `requests`.
+- Add module-level and class-level docstrings using `"""..."""` (PEP 257) to explain the file's purpose.

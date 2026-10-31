@@ -1,3 +1,5 @@
+"""Contract persistence service functions."""
+
 from __future__ import annotations
 
 from sqlalchemy import select
@@ -13,6 +15,17 @@ async def create_contract(
     filename: str,
     raw_text: str,
 ) -> Contract:
+    """Create and persist a new contract in pending status.
+
+    Args:
+        db: Active async database session.
+        user_id: Owner of the contract.
+        filename: Original file name.
+        raw_text: Full contract text.
+
+    Returns:
+        The saved `Contract` with a database-assigned id.
+    """
     contract = Contract(
         user_id=user_id,
         filename=filename,
@@ -26,6 +39,15 @@ async def create_contract(
 
 
 async def get_contracts(db: AsyncSession, user_id: int) -> list[Contract]:
+    """Return all contracts for a user, newest first.
+
+    Args:
+        db: Active async database session.
+        user_id: Owner whose contracts are listed.
+
+    Returns:
+        Matching `Contract` rows ordered by `created_at` descending.
+    """
     result = await db.execute(
         select(Contract)
         .where(Contract.user_id == user_id)

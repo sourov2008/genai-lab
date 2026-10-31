@@ -1,3 +1,5 @@
+"""Contract ORM model and processing status values."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -16,6 +18,8 @@ if TYPE_CHECKING:
 
 
 class ContractStatus(str, Enum):
+    """Lifecycle state of a stored contract."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     READY = "ready"
@@ -23,6 +27,8 @@ class ContractStatus(str, Enum):
 
 
 class Contract(Base):
+    """Uploaded contract text owned by a user."""
+
     __tablename__ = "contracts"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

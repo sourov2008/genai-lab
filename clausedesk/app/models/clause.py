@@ -1,3 +1,5 @@
+"""Clause ORM model and review status values."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
 
 
 class ClauseStatus(str, Enum):
+    """Review state of an extracted clause."""
+
     AUTO_ACCEPTED = "auto_accepted"
     REVIEW = "review"
     VERIFIED = "verified"
@@ -22,6 +26,8 @@ class ClauseStatus(str, Enum):
 
 
 class Clause(Base):
+    """Quoted clause extracted from a contract."""
+
     __tablename__ = "clauses"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

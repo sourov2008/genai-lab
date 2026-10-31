@@ -1,3 +1,5 @@
+"""Prompt-run ORM model for LLM call telemetry."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -13,6 +15,8 @@ if TYPE_CHECKING:
 
 
 class PromptRun(Base):
+    """Record of one LLM request made for a contract."""
+
     __tablename__ = "prompt_runs"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

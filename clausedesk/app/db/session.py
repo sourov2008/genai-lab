@@ -21,7 +21,11 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def get_engine() -> AsyncEngine:
-    """Return a process-wide async engine, creating it on first use."""
+    """Return a process-wide async engine, creating it on first use.
+
+    Returns:
+        Shared `AsyncEngine` bound to `Settings.database_url`.
+    """
     global _engine
     if _engine is None:
         settings = get_settings()
@@ -34,7 +38,11 @@ def get_engine() -> AsyncEngine:
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
-    """Return a process-wide session factory, creating it on first use."""
+    """Return a process-wide session factory, creating it on first use.
+
+    Returns:
+        `async_sessionmaker` that produces `AsyncSession` instances.
+    """
     global _session_factory
     if _session_factory is None:
         _session_factory = async_sessionmaker(
@@ -47,7 +55,14 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:
-    """Yield an AsyncSession for FastAPI Depends. Rollback on error."""
+    """Yield an AsyncSession for FastAPI Depends. Rollback on error.
+
+    Yields:
+        An `AsyncSession` for the current request.
+
+    Raises:
+        Exception: Re-raised after rollback if the request fails.
+    """
     factory = get_session_factory()
     async with factory() as session:
         try:

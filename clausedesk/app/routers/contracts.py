@@ -1,3 +1,5 @@
+"""HTTP routes for uploading and listing contracts."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form
@@ -18,6 +20,17 @@ async def upload_contract(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ) -> ContractUploadResponse:
+    """Create a contract from multipart form fields.
+
+    Args:
+        filename: Original file name.
+        raw_text: Full contract text.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        The created contract summary.
+    """
     contract = await contract_service.create_contract(
         db,
         user_id=user_id,
@@ -32,5 +45,14 @@ async def list_contracts(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ) -> list[ContractUploadResponse]:
+    """List contracts owned by the current user.
+
+    Args:
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        Contract summaries ordered by the service layer.
+    """
     contracts = await contract_service.get_contracts(db, user_id=user_id)
     return [ContractUploadResponse.model_validate(c) for c in contracts]

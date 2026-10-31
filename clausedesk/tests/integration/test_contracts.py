@@ -1,3 +1,5 @@
+"""Integration tests for contract upload and list routes."""
+
 from __future__ import annotations
 
 import httpx
@@ -28,6 +30,12 @@ async def _clear_user_contracts(test_db: AsyncSession) -> None:
 
 
 async def test_create_contract(client: AsyncClient, test_db: AsyncSession) -> None:
+    """POST a contract and expect a pending summary payload.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
     await _ensure_seed_user(test_db)
     await _clear_user_contracts(test_db)
 
@@ -43,6 +51,12 @@ async def test_create_contract(client: AsyncClient, test_db: AsyncSession) -> No
 
 
 async def test_get_contracts(client: AsyncClient, test_db: AsyncSession) -> None:
+    """POST one contract then GET the list with a single item.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
     await _ensure_seed_user(test_db)
     await _clear_user_contracts(test_db)
 

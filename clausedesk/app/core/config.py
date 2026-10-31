@@ -49,5 +49,9 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return a process-wide cached Settings instance."""
+    """Return a process-wide cached Settings instance.
+
+    Returns:
+        Settings loaded from the environment and `.env` file.
+    """
     return Settings()

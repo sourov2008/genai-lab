@@ -1,3 +1,5 @@
+"""User ORM model."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -13,6 +15,8 @@ if TYPE_CHECKING:
 
 
 class User(Base):
+    """Registered account that owns uploaded contracts."""
+
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

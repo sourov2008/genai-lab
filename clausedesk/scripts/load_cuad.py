@@ -1,3 +1,5 @@
+"""Load unique CUAD contracts and seed the local database."""
+
 from __future__ import annotations
 
 import sys
@@ -24,6 +26,16 @@ _CUAD_JSON_URL = "https://huggingface.co/datasets/theatticusproject/cuad/resolve
 
 
 def load_unique_contracts(limit: int = 50) -> list[dict[str, str]]:
+    """Download CUAD JSON and return unique contracts by title.
+
+    Keeps the longest combined paragraph text for each title.
+
+    Args:
+        limit: Maximum number of unique contracts to return.
+
+    Returns:
+        Dicts with keys `name` and `raw_text`. Empty list on download failure.
+    """
     print("⏳ Downloading CUAD dataset (this may take a minute)...")
     
     unique: dict[str, dict[str, str]] = {}
@@ -65,6 +77,11 @@ def load_unique_contracts(limit: int = 50) -> list[dict[str, str]]:
 
 
 async def seed_database(contracts: list[dict[str, str]]) -> None:
+    """Insert missing seed-user contracts into the database.
+
+    Args:
+        contracts: Unique contract dicts from `load_unique_contracts`.
+    """
     settings = get_settings()
     async with get_session_factory()() as session:
         result = await session.execute(select(User).where(User.email == _SEED_EMAIL))
@@ -100,6 +117,7 @@ async def seed_database(contracts: list[dict[str, str]]) -> None:
 
 
 async def main() -> None:
+    """Load CUAD contracts and seed the database."""
     contracts = load_unique_contracts(limit=50)
     print(f"📄 Loaded {len(contracts)} unique contracts from CUAD.")
     await seed_database(contracts)

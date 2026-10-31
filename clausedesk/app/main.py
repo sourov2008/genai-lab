@@ -20,6 +20,14 @@ logger = logging.getLogger("clausedesk")
 # TODO: Refactor deprecated asynccontextmanager.
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Start and stop application resources.
+
+    Args:
+        _app: FastAPI instance (unused; required by the lifespan protocol).
+
+    Yields:
+        Control to the running application between startup and shutdown.
+    """
     settings = get_settings()
     logger.info("Starting %s (%s)", settings.app_name, settings.app_env)
     yield
@@ -36,6 +44,15 @@ async def validation_exception_handler(
     _request: Request,
     exc: RequestValidationError,
 ) -> JSONResponse:
+    """Return a JSON body for request validation failures.
+
+    Args:
+        _request: Incoming request (unused).
+        exc: FastAPI validation error.
+
+    Returns:
+        HTTP 422 response with error details.
+    """
     return JSONResponse(
         status_code=422,
         content={"error": "Validation Error", "details": exc.errors()},
@@ -44,6 +61,11 @@ async def validation_exception_handler(
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict[str, str]:
+    """Report process and database health.
+
+    Returns:
+        Status payload. `db` is `ok` when `SELECT 1` succeeds.
+    """
     try:
         async with get_engine().connect() as connection:
             await connection.execute(text("SELECT 1"))
