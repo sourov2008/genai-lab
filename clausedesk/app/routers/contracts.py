@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Response
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_id
 from app.db.session import get_db
-from app.schemas.contract import ContractDetailResponse, ContractUploadResponse
+from app.schemas.contract import (
+    ContractDetailResponse,
+    ContractUpdate,
+    ContractUploadResponse,
+)
 from app.services import contract_service
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -103,4 +108,45 @@ async def delete_contract(
     if not deleted:
         raise HTTPException(status_code=404, detail="Contract not found")
     return None
+
+
+@router.patch("/{contract_id}", response_model=ContractDetailResponse)
+async def update_contract(
+    contract_id: int,
+    payload: ContractUpdate,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> ContractDetailResponse:
+    """Update selected fields on a contract owned by the current user.
+
+    Args:
+        contract_id: Contract primary key.
+        payload: Optional filename, raw_text, and status.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        Updated contract detail.
+
+    Raises:
+        HTTPException: 404 if missing or not owned; 409 on filename conflict.
+    """
+    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    try:
+        contract = await contract_service.update_contract(
+            db,
+            contract,
+            filename=payload.filename,
+            raw_text=payload.raw_text,
+            status=payload.status,
+        )
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Filename already exists for this user",
+        ) from exc
+    return ContractDetailResponse.model_validate(contract)
+
 

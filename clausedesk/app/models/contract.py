@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text, func
+from sqlalchemy import ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -30,6 +30,9 @@ class Contract(Base):
     """Uploaded contract text owned by a user."""
 
     __tablename__ = "contracts"
+    __table_args__ = (
+        UniqueConstraint("filename", "user_id", name="uq_contract_filename_user"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models import Contract
 from app.models.contract import ContractStatus
@@ -71,7 +73,9 @@ async def get_contract_by_id(
         The `Contract` if `id` and `user_id` match, otherwise `None`.
     """
     result = await db.execute(
-        select(Contract).where(
+        select(Contract)
+        .options(selectinload(Contract.clauses))
+        .where(
             Contract.id == contract_id,
             Contract.user_id == user_id,
         )
@@ -100,4 +104,44 @@ async def delete_contract(
     await db.delete(contract)
     await db.commit()
     return True
+
+
+async def update_contract(
+    db: AsyncSession,
+    contract: Contract,
+    filename: str | None = None,
+    raw_text: str | None = None,
+    status: str | None = None,
+) -> Contract:
+    """Apply non-None fields to a contract and persist the change.
+
+    Args:
+        db: Active async database session.
+        contract: Loaded contract instance to update.
+        filename: Replacement file name, if provided.
+        raw_text: Replacement contract text, if provided.
+        status: Replacement processing status, if provided.
+
+    Returns:
+        The refreshed `Contract`.
+
+    Raises:
+        IntegrityError: If commit violates a uniqueness constraint on filename.
+    """
+    if filename is not None:
+        contract.filename = filename
+    if raw_text is not None:
+        contract.raw_text = raw_text
+    if status is not None:
+        contract.status = status
+    await db.commit()
+    await db.refresh(contract)
+    result = await db.execute(
+        select(Contract)
+        .options(selectinload(Contract.clauses))
+        .where(Contract.id == contract.id)
+    )
+    return result.scalar_one()
+
+
 

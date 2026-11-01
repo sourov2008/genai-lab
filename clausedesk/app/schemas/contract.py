@@ -27,3 +27,11 @@ class ContractDetailResponse(BaseModel):
     clauses: list[ClauseResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ContractUpdate(BaseModel):
+    """Partial contract fields for PATCH-style updates."""
+
+    filename: str | None = None
+    raw_text: str | None = None
+    status: str | None = None

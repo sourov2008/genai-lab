@@ -103,3 +103,61 @@ async def test_delete_contract(client: AsyncClient, test_db: AsyncSession) -> No
     missing = await client.get(f"/contracts/{contract_id}")
     assert missing.status_code == 404
 
+
+async def test_update_contract(client: AsyncClient, test_db: AsyncSession) -> None:
+    """PATCH filename and keep the original raw_text.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
+    await _ensure_seed_user(test_db)
+    original_raw_text = "hello"
+    created = await client.post(
+        "/contracts/",
+        data={"filename": "test.pdf", "raw_text": original_raw_text},
+    )
+    contract_id = created.json()["id"]
+
+    response = await client.patch(
+        f"/contracts/{contract_id}",
+        json={"filename": "updated.pdf"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filename"] == "updated.pdf"
+    assert body["raw_text"] == original_raw_text
+
+
+async def test_duplicate_filename_returns_409(
+    client: AsyncClient,
+    test_db: AsyncSession,
+) -> None:
+    """PATCH a contract to a filename already used by the same user.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
+    await _ensure_seed_user(test_db)
+    await client.post(
+        "/contracts/",
+        data={"filename": "duplicate.pdf", "raw_text": "first"},
+    )
+    second = await client.post(
+        "/contracts/",
+        data={"filename": "other.pdf", "raw_text": "second"},
+    )
+    second_id = second.json()["id"]
+
+    response = await client.patch(
+        f"/contracts/{second_id}",
+        json={"filename": "duplicate.pdf"},
+    )
+
+    assert response.status_code == 409
+    detail = response.json()["detail"].lower()
+    assert "already exists" in detail or "duplicate" in detail
+
+
