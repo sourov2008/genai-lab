@@ -2,15 +2,14 @@
 
 ClauseDesk reads English commercial contracts, extracts a fixed set of clause types, and keeps every result tied to a source quote. Code verifies citations; a human reviews what counts. This is not a chatbot and not a drafting tool.
 
-**Current status:** backend skeleton, SQLAlchemy models, async Alembic migrations, and a CUAD seed loader. LLM extraction starts next week.
+**Current status:** backend skeleton, SQLAlchemy models, async Alembic migrations, CUAD seed loader, and a Docker Compose stack for Postgres plus the API.
 
 ## Prerequisites
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/)
 - Docker Desktop
+- Python 3.12+ and [uv](https://docs.astral.sh/uv/) (only for host-machine development)
 
-## Setup
+## Quick Start (Docker)
 
 1. Clone the repository and enter the project folder:
 
@@ -24,9 +23,30 @@ cd clausedesk
 cp .env.example .env
 ```
 
-Match `DATABASE_URL` to the Postgres service in `docker-compose.yml` (user `postgres`, password `postgres`, database `clausedesk`) unless you change those values.
+3. Build and start the stack:
 
-3. Create and activate a virtual environment, then install dependencies:
+```bash
+docker compose up -d --build
+```
+
+## Seed Data (Optional)
+To load the 50 sample contracts into the database, run:
+```bash
+docker compose exec api uv run python scripts/load_cuad.py
+```
+This single command starts Postgres and the FastAPI app. The API container waits until the database is healthy, then runs Alembic migrations (`alembic upgrade head`) before serving the API.
+
+
+## Verify
+
+- Health: [http://localhost:8000/health](http://localhost:8000/health) — expect `{"status": "ok", "db": "ok"}`
+- Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+## Local Development (without Docker)
+
+Use this when you want uvicorn on the host and Postgres in Docker.
+
+1. Create and activate a virtual environment, then install dependencies:
 
 ```bash
 uv venv
@@ -34,34 +54,31 @@ source .venv/bin/activate
 uv sync
 ```
 
-4. Start Postgres:
+2. Start Postgres only:
 
 ```bash
 docker compose up -d db
 ```
 
-5. Apply migrations:
+3. Point `DATABASE_URL` in `.env` at localhost (user `postgres`, password `postgres`, database `clausedesk`), matching `docker-compose.yml` unless you change those values.
+
+4. Apply migrations:
 
 ```bash
 alembic upgrade head
 ```
 
-6. Seed 50 unique CUAD contracts (idempotent):
+5. Seed 50 unique CUAD contracts (idempotent):
 
 ```bash
 python scripts/load_cuad.py
 ```
 
-7. Run the API:
+6. Run the API:
 
 ```bash
 uvicorn app.main:app --reload
 ```
-
-## Verify
-
-- Health: [http://localhost:8000/health](http://localhost:8000/health) — expect `{"status": "ok", "db": "ok"}`
-- Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ## Project structure
 
@@ -70,7 +87,7 @@ app/
   core/        settings and shared config
   db/          async SQLAlchemy engine and sessions
   models/      persistence (User, Contract, Clause, PromptRun)
-  schemas/     Pydantic request/response DTOs (next)
+  schemas/     Pydantic request/response DTOs
   routers/     HTTP endpoints only
   services/    business logic (extraction, verification, review)
   llm/         provider adapters (not implemented yet)
