@@ -29,13 +29,15 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-## Seed Data (Optional)
-To load the 50 sample contracts into the database, run:
-```bash
-docker compose exec api uv run python scripts/load_cuad.py
-```
 This single command starts Postgres and the FastAPI app. The API container waits until the database is healthy, then runs Alembic migrations (`alembic upgrade head`) before serving the API.
 
+## Seeding Data
+
+The database starts empty after Compose comes up. To load CUAD sample contracts into the API container:
+
+```bash
+docker compose exec api python scripts/load_cuad.py
+```
 
 ## Verify
 
@@ -78,6 +80,14 @@ python scripts/load_cuad.py
 
 ```bash
 uvicorn app.main:app --reload
+```
+
+## Running Tests
+
+Tests use an in-memory SQLite database and run independently of Docker. From the `clausedesk` directory, with the virtualenv activated:
+
+```bash
+pytest tests/ -v
 ```
 
 ## Project structure
