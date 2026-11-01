@@ -35,3 +35,12 @@ class ContractUpdate(BaseModel):
     filename: str | None = None
     raw_text: str | None = None
     status: str | None = None
+
+
+class PaginatedContractResponse(BaseModel):
+    """Paginated list of contract summaries."""
+
+    total: int
+    limit: int
+    offset: int
+    items: list[ContractUploadResponse]

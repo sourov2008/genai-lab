@@ -67,7 +67,9 @@ async def test_get_contracts(client: AsyncClient, test_db: AsyncSession) -> None
     response = await client.get("/contracts/")
 
     assert response.status_code == 200
-    assert len(response.json()) == 1
+    body = response.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
 
 
 async def test_get_contract_not_found(client: AsyncClient) -> None:
@@ -159,5 +161,62 @@ async def test_duplicate_filename_returns_409(
     assert response.status_code == 409
     detail = response.json()["detail"].lower()
     assert "already exists" in detail or "duplicate" in detail
+
+
+async def test_pagination(client: AsyncClient, test_db: AsyncSession) -> None:
+    """GET a middle page when three contracts exist.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
+    await _ensure_seed_user(test_db)
+    await _clear_user_contracts(test_db)
+    for name in ("a.pdf", "b.pdf", "c.pdf"):
+        await client.post(
+            "/contracts/",
+            data={"filename": name, "raw_text": "hello"},
+        )
+
+    response = await client.get("/contracts/", params={"limit": 2, "offset": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 3
+    assert body["limit"] == 2
+    assert body["offset"] == 1
+    assert len(body["items"]) == 2
+
+
+async def test_filter_by_status(client: AsyncClient, test_db: AsyncSession) -> None:
+    """GET only contracts whose status is ready.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
+    await _ensure_seed_user(test_db)
+    await _clear_user_contracts(test_db)
+    await client.post(
+        "/contracts/",
+        data={"filename": "pending.pdf", "raw_text": "hello"},
+    )
+    ready = await client.post(
+        "/contracts/",
+        data={"filename": "ready.pdf", "raw_text": "hello"},
+    )
+    await client.patch(
+        f"/contracts/{ready.json()['id']}",
+        json={"status": "ready"},
+    )
+
+    response = await client.get("/contracts/", params={"status": "ready"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["status"] == "ready"
+
 
 

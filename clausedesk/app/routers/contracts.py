@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Response
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from app.schemas.contract import (
     ContractDetailResponse,
     ContractUpdate,
     ContractUploadResponse,
+    PaginatedContractResponse,
 )
 from app.services import contract_service
 
@@ -45,22 +46,44 @@ async def upload_contract(
     return ContractUploadResponse.model_validate(contract)
 
 
-@router.get("/", response_model=list[ContractUploadResponse])
+@router.get("/", response_model=PaginatedContractResponse)
 async def list_contracts(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
-) -> list[ContractUploadResponse]:
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    status: str | None = Query(None, description="Filter by contract status"),
+) -> PaginatedContractResponse:
     """List contracts owned by the current user.
 
     Args:
         db: Request-scoped database session.
         user_id: Authenticated user id.
+        limit: Page size (1–100).
+        offset: Number of rows to skip.
+        status: Optional status filter.
 
     Returns:
-        Contract summaries ordered by the service layer.
+        Paginated contract summaries.
     """
-    contracts = await contract_service.get_contracts(db, user_id=user_id)
-    return [ContractUploadResponse.model_validate(c) for c in contracts]
+    total = await contract_service.get_contracts_count(
+        db,
+        user_id=user_id,
+        status=status,
+    )
+    contracts = await contract_service.get_contracts(
+        db,
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        status=status,
+    )
+    return PaginatedContractResponse(
+        total=total,
+        limit=limit,
+        offset=offset,
+        items=[ContractUploadResponse.model_validate(c) for c in contracts],
+    )
 
 
 @router.get("/{contract_id}", response_model=ContractDetailResponse)

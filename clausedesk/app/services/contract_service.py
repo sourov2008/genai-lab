@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -39,22 +39,55 @@ async def create_contract(
     return contract
 
 
-async def get_contracts(db: AsyncSession, user_id: int) -> list[Contract]:
-    """Return all contracts for a user, newest first.
+async def get_contracts_count(
+    db: AsyncSession,
+    user_id: int,
+    status: str | None = None,
+) -> int:
+    """Return how many contracts the user has, optionally filtered by status.
+
+    Args:
+        db: Active async database session.
+        user_id: Owner whose contracts are counted.
+        status: Optional status filter.
+
+    Returns:
+        Matching row count.
+    """
+    query = select(func.count(Contract.id)).where(Contract.user_id == user_id)
+    if status is not None:
+        query = query.where(Contract.status == status)
+    result = await db.execute(query)
+    return int(result.scalar_one())
+
+
+async def get_contracts(
+    db: AsyncSession,
+    user_id: int,
+    limit: int = 10,
+    offset: int = 0,
+    status: str | None = None,
+) -> list[Contract]:
+    """Return a page of contracts for a user, newest first.
 
     Args:
         db: Active async database session.
         user_id: Owner whose contracts are listed.
+        limit: Maximum rows to return.
+        offset: Number of rows to skip.
+        status: Optional status filter.
 
     Returns:
         Matching `Contract` rows ordered by `created_at` descending.
     """
+    query = select(Contract).where(Contract.user_id == user_id)
+    if status is not None:
+        query = query.where(Contract.status == status)
     result = await db.execute(
-        select(Contract)
-        .where(Contract.user_id == user_id)
-        .order_by(Contract.created_at.desc())
+        query.order_by(Contract.created_at.desc()).limit(limit).offset(offset)
     )
     return list(result.scalars().all())
+
 
 
 async def get_contract_by_id(
