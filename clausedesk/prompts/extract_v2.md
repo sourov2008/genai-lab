@@ -32,3 +32,5 @@ Example of valid output for a termination clause:
   ]
 }
 ```
+
+REFUSAL RULE: If the contract does NOT contain any of the 8 requested clause types, you MUST return exactly {"clauses": []}. Never invent or guess a clause. If you cannot find an exact verbatim quote, omit that clause.

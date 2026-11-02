@@ -73,7 +73,14 @@ async def extract_clauses_from_contract(
         raise LLMBadRequestError("LLM returned invalid JSON") from exc
 
     created: list[Clause] = []
-    for item in payload.get("clauses", []):
+    raw_clauses = payload.get("clauses") if isinstance(payload, dict) else None
+    if not isinstance(raw_clauses, list):
+        raw_clauses = []
+    if not raw_clauses:
+        logger.info("No clauses found for contract %s", contract.id)
+    for item in raw_clauses:
+        if not isinstance(item, dict):
+            continue
         verified_data = verify_clause(contract, item)
         if verified_data is None:
             continue

@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.llm.base import LLMRequest, LLMResponse, LLMUsage
 from app.models import Base, Contract, User
 from app.services import extraction_service
 
@@ -245,6 +246,52 @@ async def test_extract_contract(client: AsyncClient, test_db: AsyncSession) -> N
     assert len(clauses) == 1
     assert clauses[0]["clause_type"] == "termination"
     assert clauses[0]["verified"] is True
+
+
+async def test_extract_no_clauses(
+    client: AsyncClient,
+    test_db: AsyncSession,
+    override_llm,
+) -> None:
+    """POST extract when the LLM returns no clauses and expect ready + [].
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+        override_llm: Fake LLM instance registered on `get_llm`.
+    """
+    await _ensure_seed_user(test_db)
+    await _clear_user_contracts(test_db)
+
+    async def complete_empty(request: LLMRequest) -> LLMResponse:
+        return LLMResponse(
+            text='{"clauses": []}',
+            model="fake",
+            provider="fake",
+            usage=LLMUsage(input_tokens=0, output_tokens=0, cost_usd=0.0),
+            latency_ms=0,
+            request_id="fake-empty",
+        )
+
+    override_llm.complete = complete_empty  # type: ignore[method-assign]
+
+    created = await client.post(
+        "/contracts/",
+        data={
+            "filename": "greeting.pdf",
+            "raw_text": "This is just a simple greeting.",
+        },
+    )
+    contract_id = created.json()["id"]
+
+    response = await client.post(f"/contracts/{contract_id}/extract")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+    detail = await client.get(f"/contracts/{contract_id}")
+    assert detail.status_code == 200
+    assert detail.json()["status"] == "ready"
 
 
 
