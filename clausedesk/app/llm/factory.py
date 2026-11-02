@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.llm.base import LLMProvider
 from app.llm.openai_provider import OpenAIProvider
 
@@ -26,3 +26,8 @@ def make_llm_provider(settings: Settings) -> LLMProvider:
             settings.llm_timeout_s,
         )
     raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
+
+
+def get_llm() -> LLMProvider:
+    """Return the process LLM provider for FastAPI `Depends`."""
+    return make_llm_provider(get_settings())

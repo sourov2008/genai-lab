@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.llm.base import LLMProvider, LLMRequest, Message
 from app.models import Contract
+from app.models.clause import Clause, ClauseStatus
 from app.models.contract import ContractStatus
 
 async def create_contract(
@@ -175,6 +179,49 @@ async def update_contract(
         .where(Contract.id == contract.id)
     )
     return result.scalar_one()
+
+
+async def extract_clauses(
+    db: AsyncSession,
+    contract: Contract,
+    llm: LLMProvider,
+) -> Contract:
+    """Call the LLM, persist extracted clauses, and verify quotes.
+
+    Args:
+        db: Active async database session.
+        contract: Contract whose `raw_text` is sent to the LLM.
+        llm: Provider used for completion (must be faked in tests).
+
+    Returns:
+        The contract reloaded with clauses.
+    """
+    response = await llm.complete(
+        LLMRequest(messages=[Message(role="user", content=contract.raw_text)])
+    )
+    payload = json.loads(response.text)
+    for item in payload.get("clauses", []):
+        quote = item["quote"]
+        verified = quote in contract.raw_text
+        db.add(
+            Clause(
+                contract_id=contract.id,
+                clause_type=item["clause_type"],
+                quote=quote,
+                confidence=item.get("confidence"),
+                verified=verified,
+                status=(
+                    ClauseStatus.VERIFIED.value if verified else ClauseStatus.REVIEW.value
+                ),
+            )
+        )
+    contract.status = ContractStatus.READY.value
+    await db.commit()
+    db.expire(contract, ["clauses"])
+    loaded = await get_contract_by_id(db, contract.id, contract.user_id)
+    if loaded is None:
+        return contract
+    return loaded
 
 
 

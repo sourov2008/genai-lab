@@ -219,4 +219,32 @@ async def test_filter_by_status(client: AsyncClient, test_db: AsyncSession) -> N
     assert body["items"][0]["status"] == "ready"
 
 
+async def test_extract_contract(client: AsyncClient, test_db: AsyncSession) -> None:
+    """POST extract and expect one verified termination clause from the fake LLM.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
+    await _ensure_seed_user(test_db)
+    await _clear_user_contracts(test_db)
+    created = await client.post(
+        "/contracts/",
+        data={
+            "filename": "extract.pdf",
+            "raw_text": "This is a test for termination.",
+        },
+    )
+    contract_id = created.json()["id"]
+
+    response = await client.post(f"/contracts/{contract_id}/extract")
+
+    assert response.status_code == 200
+    clauses = response.json()["clauses"]
+    assert len(clauses) == 1
+    assert clauses[0]["clause_type"] == "termination"
+    assert clauses[0]["verified"] is True
+
+
+
 

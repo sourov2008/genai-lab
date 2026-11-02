@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_id
 from app.db.session import get_db
+from app.llm.base import LLMProvider
+from app.llm.factory import get_llm
 from app.schemas.contract import (
     ContractDetailResponse,
     ContractUpdate,
@@ -170,6 +172,34 @@ async def update_contract(
             status_code=409,
             detail="Filename already exists for this user",
         ) from exc
+    return ContractDetailResponse.model_validate(contract)
+
+
+@router.post("/{contract_id}/extract", response_model=ContractDetailResponse)
+async def extract_contract(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+    llm: LLMProvider = Depends(get_llm),
+) -> ContractDetailResponse:
+    """Extract clauses from a contract using the configured LLM.
+
+    Args:
+        contract_id: Contract primary key.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+        llm: Injected LLM provider.
+
+    Returns:
+        Contract detail including extracted clauses.
+
+    Raises:
+        HTTPException: 404 if the contract is missing or not owned by the user.
+    """
+    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    contract = await contract_service.extract_clauses(db, contract, llm)
     return ContractDetailResponse.model_validate(contract)
 
 

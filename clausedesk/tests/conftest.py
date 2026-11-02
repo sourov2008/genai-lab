@@ -13,9 +13,36 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.security import get_current_user_id
 from app.db.session import get_db
+from app.llm.base import LLMProvider, LLMRequest, LLMResponse, LLMUsage
+from app.llm.factory import get_llm
 from app.main import app
 from app.models import User
 from app.models.base import Base
+
+
+class FakeLLMProvider(LLMProvider):
+    """In-memory LLM that returns a verified termination clause. No network."""
+
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        """Return a fixed JSON extraction payload.
+
+        Args:
+            request: Incoming completion request (ignored).
+
+        Returns:
+            Fake `LLMResponse` with one termination clause.
+        """
+        return LLMResponse(
+            text=(
+                '{"clauses": [{"clause_type": "termination", '
+                '"quote": "test", "confidence": 0.9}]}'
+            ),
+            model="fake",
+            provider="fake",
+            usage=LLMUsage(input_tokens=0, output_tokens=0, cost_usd=0.0),
+            latency_ms=0,
+            request_id="fake-request",
+        )
 
 
 @pytest.fixture(scope="function")
@@ -55,11 +82,31 @@ async def test_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-async def client(test_db: AsyncSession) -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Yield an ASGI HTTP client with test database and user overrides.
+def override_llm() -> FakeLLMProvider:
+    """Replace `get_llm` with `FakeLLMProvider` for the test.
+
+    Yields:
+        The fake provider registered on the FastAPI app.
+    """
+    provider = FakeLLMProvider()
+
+    def _get_llm() -> LLMProvider:
+        return provider
+
+    app.dependency_overrides[get_llm] = _get_llm
+    return provider
+
+
+@pytest.fixture
+async def client(
+    test_db: AsyncSession,
+    override_llm: FakeLLMProvider,
+) -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Yield an ASGI HTTP client with test database, user, and LLM overrides.
 
     Args:
         test_db: Session fixture used in place of `get_db`.
+        override_llm: Fake LLM registered for `get_llm`.
 
     Yields:
         `httpx.AsyncClient` targeting the FastAPI app in-process.
