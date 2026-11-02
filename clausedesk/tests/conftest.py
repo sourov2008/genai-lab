@@ -27,16 +27,14 @@ class FakeLLMProvider(LLMProvider):
         """Return a fixed JSON extraction payload.
 
         Args:
-            request: Incoming completion request (ignored).
+            request: Incoming completion request; must request JSON mode.
 
         Returns:
             Fake `LLMResponse` with one termination clause.
         """
+        assert request.response_format == {"type": "json_object"}
         return LLMResponse(
-            text=(
-                '{"clauses": [{"clause_type": "termination", '
-                '"quote": "test", "confidence": 0.9}]}'
-            ),
+            text='{"clauses": [{"clause_type": "termination", "quote": "test", "confidence": 0.9}]}',
             model="fake",
             provider="fake",
             usage=LLMUsage(input_tokens=0, output_tokens=0, cost_usd=0.0),

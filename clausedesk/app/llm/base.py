@@ -21,6 +21,7 @@ class LLMRequest(BaseModel):
     messages: list[Message]
     temperature: float = 0.0
     max_tokens: int = 1024
+    response_format: dict | None = None
 
 
 class LLMUsage(BaseModel):

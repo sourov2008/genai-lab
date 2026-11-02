@@ -50,13 +50,16 @@ class OpenAIProvider(LLMProvider):
         started = time.monotonic()
         request_id = uuid.uuid4().hex[:12]
         messages = [m.model_dump() for m in request.messages]
+        create_kwargs: dict = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+        }
+        if request.response_format is not None:
+            create_kwargs["response_format"] = request.response_format
         try:
-            raw = await self._client.chat.completions.create(
-                model=self._model,
-                messages=messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-            )
+            raw = await self._client.chat.completions.create(**create_kwargs)
         except openai.APIStatusError as exc:
             self._raise_for_status(exc)
         except (APITimeoutError, APIConnectionError, TimeoutError) as exc:

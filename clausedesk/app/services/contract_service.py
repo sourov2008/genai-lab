@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.llm.base import LLMProvider, LLMRequest, Message
-from app.models import Contract
+from app.llm.errors import LLMBadRequestError
+from app.models import Contract, PromptRun
 from app.models.clause import Clause, ClauseStatus
 from app.models.contract import ContractStatus
 
@@ -197,22 +198,64 @@ async def extract_clauses(
         The contract reloaded with clauses.
     """
     response = await llm.complete(
-        LLMRequest(messages=[Message(role="user", content=contract.raw_text)])
+        LLMRequest(
+            messages=[
+                Message(
+                    role="system",
+                    content=(
+                        "You are a legal contract analyzer. Extract the "
+                        "termination clause. Return a JSON object with a "
+                        "'clauses' array. Each clause must have 'clause_type' "
+                        "(string), 'quote' (exact substring from text), and "
+                        "'confidence' (float). If none, return {\"clauses\": []}."
+                    ),
+                ),
+                Message(role="user", content=contract.raw_text),
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.0,
+        )
     )
-    payload = json.loads(response.text)
+    prompt_run = PromptRun(
+        contract_id=contract.id,
+        provider=response.provider,
+        model=response.model,
+        raw_response=response.text,
+        input_tokens=response.usage.input_tokens,
+        output_tokens=response.usage.output_tokens,
+        cost_usd=response.usage.cost_usd,
+        latency_ms=response.latency_ms,
+        request_id=response.request_id,
+    )
+    db.add(prompt_run)
+    await db.flush()
+    text = response.text.strip()
+    if text.startswith("```json"):
+        text = text.removeprefix("```json").strip()
+        if text.endswith("```"):
+            text = text.removesuffix("```").strip()
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise LLMBadRequestError("LLM returned invalid JSON") from exc
     for item in payload.get("clauses", []):
         quote = item["quote"]
         verified = quote in contract.raw_text
+        confidence = item.get("confidence", 0.0) or 0.0
+        status = (
+            ClauseStatus.AUTO_ACCEPTED.value
+            if (verified and confidence >= 0.7)
+            else ClauseStatus.REVIEW.value
+        )
         db.add(
             Clause(
                 contract_id=contract.id,
                 clause_type=item["clause_type"],
                 quote=quote,
-                confidence=item.get("confidence"),
+                confidence=confidence,
                 verified=verified,
-                status=(
-                    ClauseStatus.VERIFIED.value if verified else ClauseStatus.REVIEW.value
-                ),
+                status=status,
+                prompt_run_id=prompt_run.id,
             )
         )
     contract.status = ContractStatus.READY.value
