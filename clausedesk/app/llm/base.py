@@ -16,7 +16,12 @@ class Message(BaseModel):
 
 
 class LLMRequest(BaseModel):
-    """Parameters for one completion call."""
+    """Parameters for one completion call.
+
+    When using OpenAI structured outputs, `response_format` must include a
+    JSON schema with ``additionalProperties: false`` and every property listed
+    in ``required``. The extraction service builds that schema on the next step.
+    """
 
     messages: list[Message]
     temperature: float = 0.0

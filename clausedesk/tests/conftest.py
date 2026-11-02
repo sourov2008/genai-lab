@@ -32,7 +32,8 @@ class FakeLLMProvider(LLMProvider):
         Returns:
             Fake `LLMResponse` with one termination clause.
         """
-        assert request.response_format == {"type": "json_object"}
+        assert request.response_format is not None
+        assert request.response_format.get("type") in {"json_object", "json_schema"}
         return LLMResponse(
             text='{"clauses": [{"clause_type": "termination", "quote": "test", "confidence": 0.9}]}',
             model="fake",
