@@ -7,22 +7,16 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.llm.base import LLMProvider, LLMRequest, Message
 from app.llm.errors import LLMBadRequestError
+from app.llm.prompt_loader import load_prompt
 from app.llm.retry import with_retry
 from app.models import Clause, Contract, PromptRun
 from app.models.contract import ContractStatus
 from app.services.verification_service import verify_clause
 
 logger = logging.getLogger(__name__)
-
-_SYSTEM_PROMPT = (
-    "You are a legal contract analyzer. Extract the "
-    "termination clause. Return a JSON object with a "
-    "'clauses' array. Each clause must have 'clause_type' "
-    "(string), 'quote' (exact substring from text), and "
-    "'confidence' (float). If none, return {\"clauses\": []}."
-)
 
 
 async def extract_clauses_from_contract(
@@ -43,9 +37,11 @@ async def extract_clauses_from_contract(
     Raises:
         LLMBadRequestError: If the model output is not valid JSON.
     """
+    settings = get_settings()
+    system_prompt = load_prompt(settings.prompt_version)
     request = LLMRequest(
         messages=[
-            Message(role="system", content=_SYSTEM_PROMPT),
+            Message(role="system", content=system_prompt),
             Message(role="user", content=contract.raw_text),
         ],
         response_format={"type": "json_object"},

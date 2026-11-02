@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.3-70b-versatile", alias="GROQ_MODEL")
     llm_timeout_s: float = 30.0
+    prompt_version: str = Field(default="v1", alias="PROMPT_VERSION")
 
     extraction_temperature: float = 0.0
     extraction_max_tokens: int = 1024

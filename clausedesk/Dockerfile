@@ -14,6 +14,7 @@ COPY app/ app/
 COPY alembic.ini ./
 COPY alembic/ alembic/
 COPY scripts/ scripts/
+COPY prompts/ prompts/
 
 ENV PATH="/app/.venv/bin:$PATH"
 
