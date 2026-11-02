@@ -1,0 +1,71 @@
+[
+  {
+    "id": 1,
+    "name": "three_core_clauses",
+    "text": "Either party may terminate this Agreement upon thirty (30) days' written notice. The Supplier's aggregate liability_cap shall not exceed the fees paid in the twelve months preceding the claim. This Agreement shall be governed by the laws of England and Wales, excluding conflict-of-law rules.",
+    "expected_clause_types": ["termination", "liability_cap", "governing_law"]
+  },
+  {
+    "id": 2,
+    "name": "termination_only",
+    "text": "This SaaS subscription continues until ended as follows. Customer may terminate this Agreement for convenience on 15 days' notice to Vendor. All other commercial terms are described in the order form without further limitation language.",
+    "expected_clause_types": ["termination"]
+  },
+  {
+    "id": 3,
+    "name": "liability_only",
+    "text": "Services are provided as described in Exhibit A. IN NO EVENT shall Vendor's total liability exceed one hundred thousand dollars (USD 100,000). The parties otherwise cooperate in good faith on operational matters.",
+    "expected_clause_types": ["liability_cap"]
+  },
+  {
+    "id": 4,
+    "name": "no_clauses_general_text",
+    "text": "The parties agree to meet weekly to discuss project status, share demo recordings, and keep a shared backlog. Deliverables will be uploaded to the designated drive. This note records working habits only.",
+    "expected_clause_types": []
+  },
+  {
+    "id": 5,
+    "name": "termination_and_confidentiality",
+    "text": "Recipient shall not disclose Confidential Information to any third party without prior written consent of Discloser. Either party may terminate this Agreement immediately for material breach that remains uncured for ten (10) days after notice.",
+    "expected_clause_types": ["termination", "confidentiality"]
+  },
+  {
+    "id": 6,
+    "name": "very_short_termination",
+    "text": "Just terminate it.",
+    "expected_clause_types": ["termination"]
+  },
+  {
+    "id": 7,
+    "name": "complex_jargon_termination",
+    "text": "Notwithstanding anything to the contrary herein, and without prejudice to any accrued rights, this Agreement may be terminated forthwith by written notice if the other party (i) commits a material breach of any covenant which is not remediable, or (ii) fails to remedy a remediable material breach within thirty (30) days after receipt of notice specifying the breach in reasonable detail.",
+    "expected_clause_types": ["termination"]
+  },
+  {
+    "id": 8,
+    "name": "multiple_missing_governing_law",
+    "text": "Customer shall pay all undisputed invoices within thirty (30) days of receipt. Either party may terminate this Agreement on sixty (60) days' written notice. Each party retains all intellectual property it owned prior to this Agreement; work product created hereunder is assigned to Customer upon payment. The parties shall not solicit each other's employees for twelve months after expiry. This statement of work does not select a governing jurisdiction.",
+    "expected_clause_types": ["payment_terms", "termination", "ip_ownership", "non_compete"]
+  },
+  {
+    "id": 9,
+    "name": "party_invitation_negative",
+    "text": "This is a party invitation. Please join us Saturday at 7pm for snacks, music, and a rooftop view. RSVP by Friday. No legal terms apply.",
+    "expected_clause_types": []
+  },
+  {
+    "id": 10,
+    "name": "all_eight_clause_types",
+    "text": "Either party may terminate this Agreement upon thirty (30) days' written notice. Vendor's aggregate liability shall not exceed the fees paid in the prior twelve (12) months. This Agreement is governed by the laws of the State of New York. Customer shall pay invoices within thirty (30) days. Each party shall keep the other's Confidential Information secret and use it only to perform this Agreement. All intellectual property created under this Agreement is owned by Customer. This Agreement automatically renews for successive one-year terms unless a party gives 60 days' notice of non-renewal. Neither party shall solicit the other's employees during the term and for one year thereafter.",
+    "expected_clause_types": [
+      "termination",
+      "liability_cap",
+      "governing_law",
+      "payment_terms",
+      "confidentiality",
+      "ip_ownership",
+      "renewal",
+      "non_compete"
+    ]
+  }
+]
