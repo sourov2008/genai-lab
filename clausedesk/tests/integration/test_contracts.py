@@ -9,6 +9,7 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Base, Contract, User
+from app.services import extraction_service
 
 
 async def _ensure_seed_user(test_db: AsyncSession) -> None:
@@ -240,7 +241,7 @@ async def test_extract_contract(client: AsyncClient, test_db: AsyncSession) -> N
     response = await client.post(f"/contracts/{contract_id}/extract")
 
     assert response.status_code == 200
-    clauses = response.json()["clauses"]
+    clauses = response.json()
     assert len(clauses) == 1
     assert clauses[0]["clause_type"] == "termination"
     assert clauses[0]["verified"] is True

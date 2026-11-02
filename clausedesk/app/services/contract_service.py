@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import json
-
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.llm.base import LLMProvider, LLMRequest, Message
-from app.llm.errors import LLMBadRequestError
-from app.models import Contract, PromptRun
-from app.models.clause import Clause, ClauseStatus
+from app.models import Contract
 from app.models.contract import ContractStatus
+
 
 async def create_contract(
     db: AsyncSession,
@@ -92,7 +88,6 @@ async def get_contracts(
         query.order_by(Contract.created_at.desc()).limit(limit).offset(offset)
     )
     return list(result.scalars().all())
-
 
 
 async def get_contract_by_id(
@@ -180,91 +175,3 @@ async def update_contract(
         .where(Contract.id == contract.id)
     )
     return result.scalar_one()
-
-
-async def extract_clauses(
-    db: AsyncSession,
-    contract: Contract,
-    llm: LLMProvider,
-) -> Contract:
-    """Call the LLM, persist extracted clauses, and verify quotes.
-
-    Args:
-        db: Active async database session.
-        contract: Contract whose `raw_text` is sent to the LLM.
-        llm: Provider used for completion (must be faked in tests).
-
-    Returns:
-        The contract reloaded with clauses.
-    """
-    response = await llm.complete(
-        LLMRequest(
-            messages=[
-                Message(
-                    role="system",
-                    content=(
-                        "You are a legal contract analyzer. Extract the "
-                        "termination clause. Return a JSON object with a "
-                        "'clauses' array. Each clause must have 'clause_type' "
-                        "(string), 'quote' (exact substring from text), and "
-                        "'confidence' (float). If none, return {\"clauses\": []}."
-                    ),
-                ),
-                Message(role="user", content=contract.raw_text),
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.0,
-        )
-    )
-    prompt_run = PromptRun(
-        contract_id=contract.id,
-        provider=response.provider,
-        model=response.model,
-        raw_response=response.text,
-        input_tokens=response.usage.input_tokens,
-        output_tokens=response.usage.output_tokens,
-        cost_usd=response.usage.cost_usd,
-        latency_ms=response.latency_ms,
-        request_id=response.request_id,
-    )
-    db.add(prompt_run)
-    await db.flush()
-    text = response.text.strip()
-    if text.startswith("```json"):
-        text = text.removeprefix("```json").strip()
-        if text.endswith("```"):
-            text = text.removesuffix("```").strip()
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise LLMBadRequestError("LLM returned invalid JSON") from exc
-    for item in payload.get("clauses", []):
-        quote = item["quote"]
-        verified = quote in contract.raw_text
-        confidence = item.get("confidence", 0.0) or 0.0
-        status = (
-            ClauseStatus.AUTO_ACCEPTED.value
-            if (verified and confidence >= 0.7)
-            else ClauseStatus.REVIEW.value
-        )
-        db.add(
-            Clause(
-                contract_id=contract.id,
-                clause_type=item["clause_type"],
-                quote=quote,
-                confidence=confidence,
-                verified=verified,
-                status=status,
-                prompt_run_id=prompt_run.id,
-            )
-        )
-    contract.status = ContractStatus.READY.value
-    await db.commit()
-    db.expire(contract, ["clauses"])
-    loaded = await get_contract_by_id(db, contract.id, contract.user_id)
-    if loaded is None:
-        return contract
-    return loaded
-
-
-

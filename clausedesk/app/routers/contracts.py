@@ -10,13 +10,14 @@ from app.core.security import get_current_user_id
 from app.db.session import get_db
 from app.llm.base import LLMProvider
 from app.llm.factory import get_llm
+from app.schemas.clause import ClauseResponse
 from app.schemas.contract import (
     ContractDetailResponse,
     ContractUpdate,
     ContractUploadResponse,
     PaginatedContractResponse,
 )
-from app.services import contract_service
+from app.services import contract_service, extraction_service
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -175,13 +176,13 @@ async def update_contract(
     return ContractDetailResponse.model_validate(contract)
 
 
-@router.post("/{contract_id}/extract", response_model=ContractDetailResponse)
+@router.post("/{contract_id}/extract", response_model=list[ClauseResponse])
 async def extract_contract(
     contract_id: int,
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
     llm: LLMProvider = Depends(get_llm),
-) -> ContractDetailResponse:
+) -> list[ClauseResponse]:
     """Extract clauses from a contract using the configured LLM.
 
     Args:
@@ -191,7 +192,7 @@ async def extract_contract(
         llm: Injected LLM provider.
 
     Returns:
-        Contract detail including extracted clauses.
+        Extracted clauses mapped from SQLAlchemy models.
 
     Raises:
         HTTPException: 404 if the contract is missing or not owned by the user.
@@ -199,7 +200,9 @@ async def extract_contract(
     contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
-    contract = await contract_service.extract_clauses(db, contract, llm)
-    return ContractDetailResponse.model_validate(contract)
+    clauses = await extraction_service.extract_clauses_from_contract(
+        db, contract, llm
+    )
+    return clauses
 
 
