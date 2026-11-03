@@ -29,8 +29,17 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
+        database_url = settings.database_url
+        if database_url.startswith("postgres://"):
+            database_url = "postgresql+asyncpg://" + database_url.removeprefix(
+                "postgres://"
+            )
+        elif database_url.startswith("postgresql://"):
+            database_url = "postgresql+asyncpg://" + database_url.removeprefix(
+                "postgresql://"
+            )
         _engine = create_async_engine(
-            settings.database_url,
+            database_url,
             pool_pre_ping=True,
         )
         logger.debug("Created async engine")
