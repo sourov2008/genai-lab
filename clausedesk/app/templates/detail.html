@@ -5,30 +5,32 @@
 {% block content %}
 <a class="btn btn-outline-secondary mb-3" href="/ui">Back to List</a>
 
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  <h1 class="h4 mb-0">{{ contract.filename }}</h1>
-  {% if contract.status == "ready" %}
-  <span class="badge bg-success">ready</span>
-  {% elif contract.status == "pending" %}
-  <span class="badge bg-secondary">pending</span>
-  {% elif contract.status == "processing" %}
-  <span class="badge bg-info">processing</span>
-  {% elif contract.status == "failed" %}
-  <span class="badge bg-danger">failed</span>
-  {% else %}
-  <span class="badge bg-secondary">{{ contract.status }}</span>
-  {% endif %}
-  {% if contract.created_at %}
-  <span class="text-muted">{{ contract.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
-  {% endif %}
-</div>
+<header class="mb-4">
+  <h1 class="mb-2 fw-bold">{{ contract.filename }}</h1>
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    {% if contract.status == "ready" %}
+    <span class="badge bg-success">ready</span>
+    {% elif contract.status == "pending" %}
+    <span class="badge bg-secondary">pending</span>
+    {% elif contract.status == "processing" %}
+    <span class="badge bg-info">processing</span>
+    {% elif contract.status == "failed" %}
+    <span class="badge bg-danger">failed</span>
+    {% else %}
+    <span class="badge bg-secondary">{{ contract.status }}</span>
+    {% endif %}
+    {% if contract.created_at %}
+    <span class="text-muted">{{ contract.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+    {% endif %}
+  </div>
+</header>
 
 <form method="POST" action="/ui/contracts/{{ contract.id }}/extract" class="mb-4">
   <button type="submit" class="btn btn-primary">Run Extraction</button>
 </form>
 
 <div class="card mb-4">
-  <div class="card-header">Contract text</div>
+  <div class="card-header text-muted">Contract text</div>
   <div class="card-body">
     <pre class="mb-0" style="white-space: pre-wrap">{{ contract.raw_text }}</pre>
   </div>
@@ -37,9 +39,9 @@
 <h2 class="h5 mb-3">Extracted clauses</h2>
 {% if contract.clauses %}
   {% for clause in contract.clauses %}
-  <div class="card mb-3{% if clause.status == 'rejected' %} opacity-50 bg-light{% endif %}">
+  <div class="card mb-4 shadow-sm border-0 border-start border-4 {% if clause.status == 'auto_accepted' or clause.status == 'verified' %}border-success{% elif clause.status == 'review' %}border-warning{% endif %}{% if clause.status == 'rejected' %} opacity-50 bg-light{% endif %}">
     <div class="card-body">
-      <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <div class="d-flex flex-wrap align-items-center gap-2 border-bottom pb-2 mb-3">
         <span class="fw-semibold">{{ clause.clause_type }}</span>
         {% if clause.confidence is not none %}
         <span class="text-muted">confidence {{ "%.2f"|format(clause.confidence) }}</span>
@@ -56,7 +58,7 @@
         <span class="badge bg-secondary">{{ clause.status }}</span>
         {% endif %}
       </div>
-      <blockquote class="bg-light p-2 border-left mb-0">{{ clause.quote }}</blockquote>
+      <blockquote class="bg-light p-3 rounded-2 mt-2 mb-3 text-dark font-monospace">{{ clause.quote }}</blockquote>
       {% if clause.status == "review" %}
       <div class="d-flex gap-2 mt-3">
         <form method="POST" action="/ui/clauses/{{ clause.id }}/review">

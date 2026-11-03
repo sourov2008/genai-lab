@@ -1,73 +1,91 @@
 {% extends "base.html" %}
 
-{% block title %}Contracts — ClauseDesk{% endblock %}
+{% block title %}ClauseDesk Dashboard{% endblock %}
 
 {% block content %}
-<div class="card mb-4">
-  <div class="card-header">Upload Contract</div>
+<h1 class="mb-4 fw-bold">ClauseDesk Dashboard</h1>
+
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-5">
+  <div class="card-header">Upload New Contract</div>
   <div class="card-body">
     <form method="POST" action="/ui/contracts/upload" enctype="multipart/form-data">
       <div class="mb-3">
         <label for="file" class="form-label">Upload Contract (PDF or TXT)</label>
-        <input type="file" name="file" id="file" class="form-control" accept=".txt,.pdf" required>
+        <input
+          type="file"
+          name="file"
+          id="file"
+          class="form-control"
+          accept=".txt,.pdf"
+          required
+        >
       </div>
       <button type="submit" class="btn btn-primary">Upload</button>
     </form>
   </div>
 </div>
 
+{% if total == 0 %}
+<div class="text-center text-muted py-5">
+  No contracts found. Upload your first contract above to get started.
+</div>
+{% else %}
 {% if total > 50 %}
 <div class="alert alert-warning" role="alert">
   Showing the 50 most recent contracts of {{ total }}. Pagination is coming soon.
 </div>
 {% endif %}
-
-<h2 class="h5 mb-3">Contracts ({{ total }})</h2>
-<div class="table-responsive">
-  <table class="table table-striped align-middle">
-    <thead>
-      <tr>
-        <th scope="col">ID</th>
-        <th scope="col">Filename</th>
-        <th scope="col">Status</th>
-        <th scope="col">Created At</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for contract in contracts %}
-      <tr>
-        <td>{{ contract.id }}</td>
-        <td>
-          <a
-            class="btn btn-sm btn-outline-primary"
-            href="/ui/contracts/{{ contract.id }}"
-          >{{ contract.filename }}</a>
-        </td>
-        <td>
-          {% if contract.status == "ready" %}
-          <span class="badge text-bg-success">ready</span>
-          {% elif contract.status == "pending" %}
-          <span class="badge text-bg-warning">pending</span>
-          {% elif contract.status == "processing" %}
-          <span class="badge text-bg-info">processing</span>
-          {% elif contract.status == "failed" %}
-          <span class="badge text-bg-danger">failed</span>
-          {% else %}
-          <span class="badge text-bg-secondary">{{ contract.status }}</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if contract.created_at %}
-          {{ contract.created_at.strftime("%Y-%m-%d %H:%M") }}
-          {% endif %}
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="4" class="text-muted">No contracts yet.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="card shadow-sm mb-5">
+  <div class="card-header">Recent Contracts</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Filename</th>
+            <th scope="col">Status</th>
+            <th scope="col">Created At</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contract in contracts %}
+          <tr>
+            <td>{{ contract.id }}</td>
+            <td>
+              <a
+                class="btn btn-sm btn-outline-primary"
+                href="/ui/contracts/{{ contract.id }}"
+              >{{ contract.filename }}</a>
+            </td>
+            <td>
+              {% if contract.status == "ready" %}
+              <span class="badge bg-success">ready</span>
+              {% elif contract.status == "pending" %}
+              <span class="badge bg-secondary">pending</span>
+              {% elif contract.status == "processing" %}
+              <span class="badge bg-info">processing</span>
+              {% elif contract.status == "failed" %}
+              <span class="badge bg-danger">failed</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ contract.status }}</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">
+              {% if contract.created_at %}
+              {{ contract.created_at.strftime("%Y-%m-%d %H:%M") }}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
+{% endif %}
 {% endblock %}

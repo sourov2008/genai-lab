@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pypdf import PdfReader
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -56,21 +57,24 @@ async def ui_index(
     )
 
 
-@router.post("/contracts/upload")
+@router.post("/contracts/upload", response_model=None)
 async def ui_upload_contract(
+    request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
-) -> RedirectResponse:
+):
     """Create a contract from an uploaded PDF or text file and return to the list.
 
     Args:
+        request: Incoming HTTP request for Jinja2 on duplicate-filename errors.
         file: Uploaded `.pdf` or `.txt` file.
         db: Request-scoped database session.
         user_id: Authenticated user id.
 
     Returns:
-        Redirect to `/ui` after the contract is saved.
+        Redirect to `/ui` after the contract is saved, or `index.html` with
+        HTTP 400 when the filename already exists for this user.
     """
     content = await file.read()
     if file.filename is not None and pathlib.Path(file.filename).name.endswith(".pdf"):
@@ -78,7 +82,31 @@ async def ui_upload_contract(
         raw_text = "\n".join(page.extract_text() for page in reader.pages)
     else:
         raw_text = content.decode("utf-8")
-    await contract_service.create_contract(db, user_id, file.filename, raw_text)
+    try:
+        await contract_service.create_contract(db, user_id, file.filename, raw_text)
+    except IntegrityError:
+        await db.rollback()
+        total = await contract_service.get_contracts_count(db, user_id=user_id)
+        contracts = await contract_service.get_contracts(
+            db,
+            user_id=user_id,
+            limit=50,
+            offset=0,
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "request": request,
+                "contracts": contracts,
+                "total": total,
+                "error_message": (
+                    "A contract with this filename already exists. "
+                    "Please rename your file and try again."
+                ),
+            },
+            status_code=400,
+        )
     return RedirectResponse(url="/ui", status_code=303)
 
 
