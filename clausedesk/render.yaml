@@ -5,6 +5,7 @@ databases:
 services:
   - type: web
     name: clausedesk-api
+    rootDir: clausedesk
     runtime: docker
     plan: free
     healthCheckPath: /health
