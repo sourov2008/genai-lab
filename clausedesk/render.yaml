@@ -18,3 +18,5 @@ services:
         value: openai
       - key: PROMPT_VERSION
         value: v2
+      - key: OPENAI_API_KEY
+        sync: false
