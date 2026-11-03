@@ -5,15 +5,18 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.session import get_engine
 from app.routers.contracts import router as contracts_router
+from app.routers.ui import router as ui_router
 
 logger = logging.getLogger("clausedesk")
 
@@ -37,6 +40,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
 app.include_router(contracts_router)
+app.include_router(ui_router)
+
+_APP_DIR = Path(__file__).resolve().parent
+(_APP_DIR / "templates").mkdir(parents=True, exist_ok=True)
+(_APP_DIR / "static").mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 @app.exception_handler(RequestValidationError)

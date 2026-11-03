@@ -1,0 +1,20 @@
+---
+description: Frontend (Jinja2 + Bootstrap) conventions
+globs: ["app/templates/**/*.html", "app/routers/ui.py"]
+alwaysApply: true
+---
+
+# Frontend
+
+## Templates
+- All templates extend `base.html`.
+- Use `{% block content %}` for page-specific content.
+- No inline `<style>` or `<script>` tags — use `app/static/` files.
+- Use Bootstrap 5 utility classes before custom CSS.
+
+## UI Routes
+- UI routes use `prefix="/ui"` and `include_in_schema=False`.
+- Use `RedirectResponse` after form POST, never render directly.
+
+## Status badges
+- pending → bg-secondary, processing → bg-info, ready → bg-success, failed → bg-danger
