@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import Contract
+from app.models.clause import Clause, ClauseStatus
 from app.models.contract import ContractStatus
 
 
@@ -175,3 +176,37 @@ async def update_contract(
         .where(Contract.id == contract.id)
     )
     return result.scalar_one()
+
+
+async def update_clause_status(
+    db: AsyncSession,
+    clause_id: int,
+    user_id: int,
+    new_status: str,
+) -> Clause | None:
+    """Update a clause review status if the user owns the parent contract.
+
+    Args:
+        db: Active async database session.
+        clause_id: Primary key of the clause.
+        user_id: Owner that must match the parent contract.
+        new_status: Replacement `ClauseStatus` value.
+
+    Returns:
+        The refreshed `Clause`, or `None` if missing or not owned.
+    """
+    result = await db.execute(
+        select(Clause)
+        .join(Contract, Clause.contract_id == Contract.id)
+        .where(
+            Clause.id == clause_id,
+            Contract.user_id == user_id,
+        )
+    )
+    clause = result.scalar_one_or_none()
+    if clause is None:
+        return None
+    clause.status = new_status  # values from ClauseStatus (review, verified, ...)
+    await db.commit()
+    await db.refresh(clause)
+    return clause

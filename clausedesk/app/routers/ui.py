@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.security import get_current_user_id
 from app.db.session import get_db
 from app.llm.factory import make_llm_provider
+from app.models.clause import ClauseStatus
 from app.services import contract_service, extraction_service
 
 router = APIRouter(prefix="/ui", tags=["ui"], include_in_schema=False)
@@ -137,3 +138,45 @@ async def ui_extract_contract(
     llm = make_llm_provider(get_settings())
     await extraction_service.extract_clauses_from_contract(db, contract, llm)
     return RedirectResponse(url=f"/ui/contracts/{contract_id}", status_code=303)
+
+
+@router.post("/clauses/{clause_id}/review")
+async def ui_review_clause(
+    clause_id: int,
+    action: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> RedirectResponse:
+    """Accept or reject a clause and return to its contract page.
+
+    Args:
+        clause_id: Clause primary key.
+        action: Form value `accept` or `reject`.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        Redirect to `/ui/contracts/{contract_id}` after the status update.
+
+    Raises:
+        HTTPException: 400 if `action` is invalid; 404 if the clause is missing
+            or not owned.
+    """
+    if action == "accept":
+        new_status = ClauseStatus.VERIFIED.value
+    elif action == "reject":
+        new_status = ClauseStatus.REJECTED.value
+    else:
+        raise HTTPException(status_code=400, detail="Invalid review action")
+    clause = await contract_service.update_clause_status(
+        db,
+        clause_id,
+        user_id,
+        new_status,
+    )
+    if clause is None:
+        raise HTTPException(status_code=404)
+    return RedirectResponse(
+        url=f"/ui/contracts/{clause.contract_id}",
+        status_code=303,
+    )

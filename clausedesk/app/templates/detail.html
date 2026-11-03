@@ -37,7 +37,7 @@
 <h2 class="h5 mb-3">Extracted clauses</h2>
 {% if contract.clauses %}
   {% for clause in contract.clauses %}
-  <div class="card mb-3">
+  <div class="card mb-3{% if clause.status == 'rejected' %} opacity-50 bg-light{% endif %}">
     <div class="card-body">
       <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
         <span class="fw-semibold">{{ clause.clause_type }}</span>
@@ -57,6 +57,22 @@
         {% endif %}
       </div>
       <blockquote class="bg-light p-2 border-left mb-0">{{ clause.quote }}</blockquote>
+      {% if clause.status == "review" %}
+      <div class="d-flex gap-2 mt-3">
+        <form method="POST" action="/ui/clauses/{{ clause.id }}/review">
+          <input type="hidden" name="action" value="accept" />
+          <button type="submit" class="btn btn-success btn-sm">Accept</button>
+        </form>
+        <form method="POST" action="/ui/clauses/{{ clause.id }}/review">
+          <input type="hidden" name="action" value="reject" />
+          <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+        </form>
+      </div>
+      {% elif clause.status == "verified" or clause.status == "auto_accepted" %}
+      <p class="text-success mb-0 mt-3">&#10003; Accepted</p>
+      {% elif clause.status == "rejected" %}
+      <p class="text-danger mb-0 mt-3">&#10007; Rejected</p>
+      {% endif %}
     </div>
   </div>
   {% endfor %}
