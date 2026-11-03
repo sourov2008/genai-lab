@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from logging.config import fileConfig
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from alembic import context
 from sqlalchemy import pool
@@ -52,13 +53,34 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     settings = get_settings()
+    rewritten_url = settings.database_url
+    if rewritten_url.startswith("postgres://"):
+        rewritten_url = "postgresql+asyncpg://" + rewritten_url.removeprefix(
+            "postgres://"
+        )
+    elif rewritten_url.startswith("postgresql://"):
+        rewritten_url = "postgresql+asyncpg://" + rewritten_url.removeprefix(
+            "postgresql://"
+        )
+    parsed = urlparse(rewritten_url)
+    connect_args: dict[str, str] = {}
+    kept: list[tuple[str, str]] = []
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        if key == "sslmode":
+            connect_args["ssl"] = "require"
+            continue
+        kept.append((key, value))
+    rewritten_url = urlunparse(parsed._replace(query=urlencode(kept)))
+    config.set_main_option("sqlalchemy.url", rewritten_url.replace("%", "%%"))
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.database_url
-    connectable = async_engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    configuration["sqlalchemy.url"] = rewritten_url
+    engine_kwargs: dict = {
+        "prefix": "sqlalchemy.",
+        "poolclass": pool.NullPool,
+    }
+    if connect_args:
+        engine_kwargs["connect_args"] = connect_args
+    connectable = async_engine_from_config(configuration, **engine_kwargs)
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
