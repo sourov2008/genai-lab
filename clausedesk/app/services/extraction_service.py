@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import logging
 
-from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.llm.base import LLMProvider, LLMRequest, Message
+from app.llm.errors import LLMBadRequestError
 from app.llm.prompt_loader import load_prompt
 from app.llm.retry import with_retry
 from app.models import Clause, Contract, PromptRun
@@ -36,7 +37,7 @@ async def extract_clauses_from_contract(
         Newly created `Clause` rows.
 
     Raises:
-        HTTPException: 500 if the model output fails `ExtractionResult` validation.
+        LLMBadRequestError: If JSON is still invalid after two attempts.
     """
     settings = get_settings()
     system_prompt = load_prompt(settings.prompt_version)
@@ -61,38 +62,57 @@ async def extract_clauses_from_contract(
         response_format=response_format,
         temperature=0.0,
     )
-    response = await with_retry(lambda: llm.complete(request))
-    prompt_run = PromptRun(
-        contract_id=contract.id,
-        provider=response.provider,
-        model=response.model,
-        raw_response=response.text,
-        input_tokens=response.usage.input_tokens,
-        output_tokens=response.usage.output_tokens,
-        cost_usd=response.usage.cost_usd,
-        latency_ms=response.latency_ms,
-        request_id=response.request_id,
-    )
-    db.add(prompt_run)
-    await db.flush()
 
-    text = response.text.strip()
-    if text.startswith("```json"):
-        text = text.removeprefix("```json").strip()
-        if text.endswith("```"):
-            text = text.removesuffix("```").strip()
-    try:
-        parsed_data = ExtractionResult.model_validate_json(text)
-    except ValidationError as exc:
-        prompt_run.error = f"Invalid JSON: {exc}"
-        contract.status = ContractStatus.FAILED.value
-        await db.commit()
-        raise HTTPException(
-            status_code=500,
-            detail="LLM output validation failed",
-        ) from exc
+    parsed_data: ExtractionResult | None = None
+    prompt_run: PromptRun | None = None
 
-    prompt_run.parsed_json = parsed_data.model_dump()
+    # We implement two layers of retry:
+    # 1. with_retry handles network/server errors (e.g., 429, 5xx, Timeouts).
+    # 2. The for-loop handles parsing errors (malformed JSON or schema misses).
+    for attempt in (1, 2):
+        response = await with_retry(lambda: llm.complete(request))
+        prompt_run = PromptRun(
+            contract_id=contract.id,
+            provider=response.provider,
+            model=response.model,
+            raw_response=response.text,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            cost_usd=response.usage.cost_usd,
+            latency_ms=response.latency_ms,
+            request_id=response.request_id,
+        )
+        db.add(prompt_run)
+        text = response.text.strip()
+        if text.startswith("```json"):
+            text = text.removeprefix("```json").strip()
+            if text.endswith("```"):
+                text = text.removesuffix("```").strip()
+        try:
+            json.loads(text)
+            parsed_data = ExtractionResult.model_validate_json(text)
+        except (json.JSONDecodeError, ValidationError) as exc:
+            if attempt == 1:
+                logger.warning(
+                    "Invalid LLM JSON for contract %s on attempt %s: %s",
+                    contract.id,
+                    attempt,
+                    exc,
+                )
+                continue
+            prompt_run.error = str(exc)
+            contract.status = ContractStatus.FAILED.value
+            await db.commit()
+            raise LLMBadRequestError(
+                "LLM failed to generate valid JSON after 2 attempts"
+            ) from exc
+        await db.flush()
+        prompt_run.parsed_json = parsed_data.model_dump()
+        break
+
+    assert parsed_data is not None
+    assert prompt_run is not None
+
     created: list[Clause] = []
     raw_clauses = parsed_data.clauses
     if not raw_clauses:

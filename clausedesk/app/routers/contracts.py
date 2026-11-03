@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user_id
 from app.db.session import get_db
 from app.llm.base import LLMProvider
+from app.llm.errors import LLMBadRequestError
 from app.llm.factory import get_llm
 from app.schemas.clause import ClauseResponse
 from app.schemas.contract import (
@@ -195,14 +196,18 @@ async def extract_contract(
         Extracted clauses mapped from SQLAlchemy models.
 
     Raises:
-        HTTPException: 404 if the contract is missing or not owned by the user.
+        HTTPException: 404 if the contract is missing or not owned; 500 if the
+            LLM output is invalid after retries.
     """
     contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
-    clauses = await extraction_service.extract_clauses_from_contract(
-        db, contract, llm
-    )
+    try:
+        clauses = await extraction_service.extract_clauses_from_contract(
+            db, contract, llm
+        )
+    except LLMBadRequestError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
     return clauses
 
 

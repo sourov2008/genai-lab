@@ -5,11 +5,11 @@ from __future__ import annotations
 import httpx
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.base import LLMRequest, LLMResponse, LLMUsage
-from app.models import Base, Contract, User
+from app.models import Base, Contract, PromptRun, User
 from app.services import extraction_service
 
 
@@ -292,6 +292,47 @@ async def test_extract_no_clauses(
     detail = await client.get(f"/contracts/{contract_id}")
     assert detail.status_code == 200
     assert detail.json()["status"] == "ready"
+
+
+async def test_extract_invalid_json_fails(
+    client: AsyncClient,
+    test_db: AsyncSession,
+    failing_llm,
+) -> None:
+    """POST extract with non-JSON LLM output and expect 500 plus failed status.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+        failing_llm: LLM that returns `text="This is not valid JSON"`.
+    """
+    await _ensure_seed_user(test_db)
+    await _clear_user_contracts(test_db)
+
+    created = await client.post(
+        "/contracts/",
+        data={
+            "filename": "invalid.json.pdf",
+            "raw_text": "This contract will not extract.",
+        },
+    )
+    contract_id = created.json()["id"]
+
+    response = await client.post(f"/contracts/{contract_id}/extract")
+
+    assert response.status_code == 500
+
+    detail = await client.get(f"/contracts/{contract_id}")
+    assert detail.status_code == 200
+    assert detail.json()["status"] == "failed"
+
+    runs = (
+        await test_db.execute(
+            select(PromptRun).where(PromptRun.contract_id == contract_id)
+        )
+    ).scalars().all()
+    assert len(runs) >= 1
+    assert any(run.error is not None and run.error != "" for run in runs)
 
 
 

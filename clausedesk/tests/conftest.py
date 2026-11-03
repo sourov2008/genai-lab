@@ -44,6 +44,28 @@ class FakeLLMProvider(LLMProvider):
         )
 
 
+class FailingLLMProvider(LLMProvider):
+    """In-memory LLM that returns non-JSON text. No network."""
+
+    async def complete(self, request: LLMRequest) -> LLMResponse:
+        """Return a body that cannot be parsed as extraction JSON.
+
+        Args:
+            request: Incoming completion request; unused by the fake.
+
+        Returns:
+            Fake `LLMResponse` whose `text` is not valid JSON.
+        """
+        return LLMResponse(
+            text="This is not valid JSON",
+            model="fake",
+            provider="fake",
+            usage=LLMUsage(input_tokens=0, output_tokens=0, cost_usd=0.0),
+            latency_ms=0,
+            request_id="fake-invalid",
+        )
+
+
 @pytest.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield an in-memory SQLite session with tables and user id 1.
@@ -88,6 +110,22 @@ def override_llm() -> FakeLLMProvider:
         The fake provider registered on the FastAPI app.
     """
     provider = FakeLLMProvider()
+
+    def _get_llm() -> LLMProvider:
+        return provider
+
+    app.dependency_overrides[get_llm] = _get_llm
+    return provider
+
+
+@pytest.fixture
+def failing_llm() -> FailingLLMProvider:
+    """Replace `get_llm` with `FailingLLMProvider` for the test.
+
+    Yields:
+        The failing provider registered on the FastAPI app.
+    """
+    provider = FailingLLMProvider()
 
     def _get_llm() -> LLMProvider:
         return provider
