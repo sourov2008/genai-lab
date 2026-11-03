@@ -53,7 +53,12 @@
       {% for contract in contracts %}
       <tr>
         <td>{{ contract.id }}</td>
-        <td>{{ contract.filename }}</td>
+        <td>
+          <a
+            class="btn btn-sm btn-outline-primary"
+            href="/ui/contracts/{{ contract.id }}"
+          >{{ contract.filename }}</a>
+        </td>
         <td>
           {% if contract.status == "ready" %}
           <span class="badge text-bg-success">ready</span>

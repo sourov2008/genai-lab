@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.security import get_current_user_id
 from app.db.session import get_db
-from app.services import contract_service
+from app.llm.factory import make_llm_provider
+from app.services import contract_service, extraction_service
 
 router = APIRouter(prefix="/ui", tags=["ui"], include_in_schema=False)
 templates = Jinja2Templates(directory="app/templates")
@@ -74,3 +76,64 @@ async def ui_upload_contract(
         raw_text=raw_text,
     )
     return RedirectResponse(url="/ui", status_code=303)
+
+
+@router.get("/contracts/{contract_id}")
+async def ui_contract_detail(
+    request: Request,
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> HTMLResponse:
+    """Render one contract and its extracted clauses.
+
+    Args:
+        request: Incoming HTTP request for Jinja2.
+        contract_id: Contract primary key.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        HTML detail page for the contract.
+
+    Raises:
+        HTTPException: 404 if the contract is missing or not owned.
+    """
+    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="detail.html",
+        context={
+            "request": request,
+            "contract": contract,
+        },
+    )
+
+
+@router.post("/contracts/{contract_id}/extract")
+async def ui_extract_contract(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> RedirectResponse:
+    """Run LLM extraction for a contract and return to the detail page.
+
+    Args:
+        contract_id: Contract primary key.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        Redirect to `/ui/contracts/{contract_id}` after extraction.
+
+    Raises:
+        HTTPException: 404 if the contract is missing or not owned.
+    """
+    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    llm = make_llm_provider(get_settings())
+    await extraction_service.extract_clauses_from_contract(db, contract, llm)
+    return RedirectResponse(url=f"/ui/contracts/{contract_id}", status_code=303)
