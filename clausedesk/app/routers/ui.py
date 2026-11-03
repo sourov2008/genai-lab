@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+import io
+import pathlib
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pypdf import PdfReader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -54,28 +58,27 @@ async def ui_index(
 
 @router.post("/contracts/upload")
 async def ui_upload_contract(
-    filename: str = Form(...),
-    raw_text: str = Form(...),
+    file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ) -> RedirectResponse:
-    """Create a contract from the UI form and return to the list.
+    """Create a contract from an uploaded PDF or text file and return to the list.
 
     Args:
-        filename: Original file name.
-        raw_text: Full contract text.
+        file: Uploaded `.pdf` or `.txt` file.
         db: Request-scoped database session.
         user_id: Authenticated user id.
 
     Returns:
         Redirect to `/ui` after the contract is saved.
     """
-    await contract_service.create_contract(
-        db,
-        user_id=user_id,
-        filename=filename,
-        raw_text=raw_text,
-    )
+    content = await file.read()
+    if file.filename is not None and pathlib.Path(file.filename).name.endswith(".pdf"):
+        reader = PdfReader(io.BytesIO(content))
+        raw_text = "\n".join(page.extract_text() for page in reader.pages)
+    else:
+        raw_text = content.decode("utf-8")
+    await contract_service.create_contract(db, user_id, file.filename, raw_text)
     return RedirectResponse(url="/ui", status_code=303)
 
 

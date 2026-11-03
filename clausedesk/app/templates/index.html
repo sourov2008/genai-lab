@@ -6,26 +6,10 @@
 <div class="card mb-4">
   <div class="card-header">Upload Contract</div>
   <div class="card-body">
-    <form method="POST" action="/ui/contracts/upload">
+    <form method="POST" action="/ui/contracts/upload" enctype="multipart/form-data">
       <div class="mb-3">
-        <label for="filename" class="form-label">Filename</label>
-        <input
-          type="text"
-          class="form-control"
-          id="filename"
-          name="filename"
-          required
-        />
-      </div>
-      <div class="mb-3">
-        <label for="raw_text" class="form-label">Contract text</label>
-        <textarea
-          class="form-control"
-          id="raw_text"
-          name="raw_text"
-          rows="8"
-          required
-        ></textarea>
+        <label for="file" class="form-label">Upload Contract (PDF or TXT)</label>
+        <input type="file" name="file" id="file" class="form-control" accept=".txt,.pdf" required>
       </div>
       <button type="submit" class="btn btn-primary">Upload</button>
     </form>
