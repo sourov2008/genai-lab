@@ -44,6 +44,21 @@ docker compose exec api python scripts/load_cuad.py
 - Health: [http://localhost:8000/health](http://localhost:8000/health) — expect `{"status": "ok", "db": "ok"}`
 - Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
+## API Endpoints
+
+`POST /contracts/{contract_id}/extract` runs LLM extraction on an uploaded contract. It looks for the eight supported clause types: `termination`, `liability_cap`, `governing_law`, `payment_terms`, `confidentiality`, `ip_ownership`, `renewal`, and `non_compete`. The call requires a configured LLM provider (`LLM_PROVIDER=openai` or `LLM_PROVIDER=groq`) with a valid API key in `.env`.
+
+Interactive OpenAPI docs for this and other routes: [http://localhost:8000/docs](http://localhost:8000/docs).
+
+## Prompt Versioning & A/B Testing
+
+Extraction prompts live in versioned files under `prompts/`:
+
+- `prompts/extract_v1.md`
+- `prompts/extract_v2.md`
+
+Switch the active version with `PROMPT_VERSION` in `.env`. Use `PROMPT_VERSION=v1` or `PROMPT_VERSION=v2` (the loader reads `prompts/extract_{version}.md`). Restart the API after changing the variable so the new prompt is used on the next extract call.
+
 ## Local Development (without Docker)
 
 Use this when you want uvicorn on the host and Postgres in Docker.

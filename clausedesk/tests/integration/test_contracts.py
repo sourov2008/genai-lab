@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.base import LLMRequest, LLMResponse, LLMUsage
-from app.models import Base, Contract, PromptRun, User
+from app.models import Base, Clause, Contract, PromptRun, User
 from app.services import extraction_service
 
 
@@ -376,6 +376,66 @@ async def test_extract_invalid_json_fails(
     ).scalars().all()
     assert len(runs) >= 1
     assert any(run.error is not None and run.error != "" for run in runs)
+
+
+async def test_end_to_end_extraction_flow(
+    client: AsyncClient,
+    test_db: AsyncSession,
+) -> None:
+    """Upload a contract, extract via FakeLLMProvider, and persist linked rows.
+
+    The `client` fixture injects `FakeLLMProvider` through `get_llm`, so this
+    path never calls a network LLM.
+
+    Args:
+        client: In-process HTTP client with FakeLLMProvider override.
+        test_db: Isolated SQLite session.
+    """
+    await _ensure_seed_user(test_db)
+    await _clear_user_contracts(test_db)
+
+    created = await client.post(
+        "/contracts/",
+        data={
+            "filename": "e2e_extract.pdf",
+            "raw_text": (
+                "Either party may terminate this agreement with 30 days "
+                "written notice. This is a test for termination."
+            ),
+        },
+    )
+    assert created.status_code in {200, 201}
+    contract_id = created.json()["id"]
+    assert contract_id is not None
+
+    response = await client.post(f"/contracts/{contract_id}/extract")
+
+    assert response.status_code == 200
+    clauses = response.json()
+    assert isinstance(clauses, list)
+    assert len(clauses) >= 1
+    assert clauses[0]["clause_type"] == "termination"
+
+    contract = (
+        await test_db.execute(select(Contract).where(Contract.id == contract_id))
+    ).scalar_one()
+    assert contract.status == "ready"
+
+    prompt_run = (
+        await test_db.execute(
+            select(PromptRun).where(PromptRun.contract_id == contract_id)
+        )
+    ).scalar_one()
+    assert prompt_run.raw_response is not None
+    assert prompt_run.raw_response != ""
+    assert prompt_run.parsed_json is not None
+    assert prompt_run.parsed_json != {}
+
+    db_clause = (
+        await test_db.execute(select(Clause).where(Clause.contract_id == contract_id))
+    ).scalar_one()
+    assert db_clause.prompt_run_id is not None
+    assert db_clause.prompt_run_id == prompt_run.id
 
 
 
