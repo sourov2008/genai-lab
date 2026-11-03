@@ -39,6 +39,9 @@ async def extract_clauses_from_contract(
     Raises:
         LLMBadRequestError: If JSON is still invalid after two attempts.
     """
+    contract.status = ContractStatus.PROCESSING.value
+    await db.commit()
+
     settings = get_settings()
     system_prompt = load_prompt(settings.prompt_version)
     schema = ExtractionResult.model_json_schema()
@@ -99,6 +102,7 @@ async def extract_clauses_from_contract(
                     attempt,
                     exc,
                 )
+                await db.flush()
                 continue
             prompt_run.error = str(exc)
             contract.status = ContractStatus.FAILED.value
@@ -106,8 +110,8 @@ async def extract_clauses_from_contract(
             raise LLMBadRequestError(
                 "LLM failed to generate valid JSON after 2 attempts"
             ) from exc
-        await db.flush()
         prompt_run.parsed_json = parsed_data.model_dump()
+        await db.flush()
         break
 
     assert parsed_data is not None

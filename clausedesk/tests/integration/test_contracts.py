@@ -247,6 +247,49 @@ async def test_extract_contract(client: AsyncClient, test_db: AsyncSession) -> N
     assert clauses[0]["clause_type"] == "termination"
     assert clauses[0]["verified"] is True
 
+    prompt_run = (
+        await test_db.execute(
+            select(PromptRun).where(PromptRun.contract_id == contract_id)
+        )
+    ).scalar_one()
+    assert prompt_run.raw_response is not None
+    assert isinstance(prompt_run.raw_response, str)
+    assert prompt_run.parsed_json is not None
+    assert isinstance(prompt_run.parsed_json, dict)
+
+
+async def test_extract_status_transitions(
+    client: AsyncClient,
+    test_db: AsyncSession,
+) -> None:
+    """POST extract and expect the contract to finish as ready.
+
+    Args:
+        client: In-process HTTP client.
+        test_db: Isolated SQLite session.
+    """
+    await _ensure_seed_user(test_db)
+    await _clear_user_contracts(test_db)
+
+    created = await client.post(
+        "/contracts/",
+        data={
+            "filename": "status.pdf",
+            "raw_text": "This is a test for termination.",
+        },
+    )
+    assert created.status_code in {200, 201}
+    assert created.json()["status"] == "pending"
+    contract_id = created.json()["id"]
+
+    response = await client.post(f"/contracts/{contract_id}/extract")
+    assert response.status_code == 200
+
+    contract = (
+        await test_db.execute(select(Contract).where(Contract.id == contract_id))
+    ).scalar_one()
+    assert contract.status == "ready"
+
 
 async def test_extract_no_clauses(
     client: AsyncClient,
