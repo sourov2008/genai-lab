@@ -20,6 +20,17 @@ from app.routers.ui import router as ui_router
 
 logger = logging.getLogger("clausedesk")
 
+tags_metadata = [
+    {
+        "name": "contracts",
+        "description": "Operations with contracts. Upload, extract, and manage clauses.",
+    },
+    {
+        "name": "meta",
+        "description": "Health checks and system status.",
+    },
+]
+
 # TODO: Refactor deprecated asynccontextmanager.
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -38,7 +49,18 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logger.info("Shutdown complete")
 
 
-app = FastAPI(title=get_settings().app_name, lifespan=lifespan)
+app = FastAPI(
+    title="ClauseDesk API",
+    description=(
+        "Contract clause extraction with verified citations. "
+        "**Not a chatbot. Not legal advice.**"
+    ),
+    version="0.1.0",
+    contact={"name": "ClauseDesk Team", "email": "api@clausedesk.local"},
+    openapi_tags=tags_metadata,
+    swagger_ui_parameters={"deepLinking": True, "displayRequestDuration": True},
+    lifespan=lifespan,
+)
 app.include_router(contracts_router)
 app.include_router(ui_router)
 

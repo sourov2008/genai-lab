@@ -4,6 +4,30 @@ ClauseDesk reads English commercial contracts, extracts a fixed set of clause ty
 
 **Current status:** backend skeleton, SQLAlchemy models, async Alembic migrations, CUAD seed loader, and a Docker Compose stack for Postgres plus the API.
 
+## Live Deployment
+
+- URL: [https://clausedesk-api.onrender.com](https://clausedesk-api.onrender.com)
+- UI: [https://clausedesk-api.onrender.com/ui](https://clausedesk-api.onrender.com/ui)
+- API Docs: [https://clausedesk-api.onrender.com/docs](https://clausedesk-api.onrender.com/docs)
+
+## Architecture Overview
+
+Request flow: **Client → FastAPI router → service layer → LLM (OpenAI or Groq) → PostgreSQL**.
+
+Routers parse HTTP and return responses. Services own extraction, verification, and persistence. The LLM adapter is behind `LLMProvider`; quotes are checked in code before anything is auto-accepted. Postgres stores contracts, clauses, and prompt-run telemetry.
+
+Stack: FastAPI, SQLAlchemy 2.0 (async), Postgres, Docker, and Render.
+
+## How to Rotate API Keys
+
+API keys live in Render Environment Variables, not in the repo. `.env` is for local development only and is not deployed.
+
+1. Open the [Render Dashboard](https://dashboard.render.com).
+2. Select the `clausedesk-api` service.
+3. Go to **Environment**.
+4. Update `OPENAI_API_KEY` (and `GROQ_API_KEY` if you use Groq).
+5. Save. Render redeploys the service with the new value.
+
 ## Prerequisites
 
 - Docker Desktop
