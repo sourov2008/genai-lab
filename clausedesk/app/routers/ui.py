@@ -74,7 +74,7 @@ async def ui_upload_contract(
 
     Returns:
         Redirect to `/ui` after the contract is saved, or `index.html` with
-        HTTP 400 when the filename already exists for this user.
+        HTTP 400 when the filename is duplicate or the user row is missing.
     """
     content = await file.read()
     if file.filename is not None and pathlib.Path(file.filename).name.endswith(".pdf"):
@@ -84,8 +84,19 @@ async def ui_upload_contract(
         raw_text = content.decode("utf-8")
     try:
         await contract_service.create_contract(db, user_id, file.filename, raw_text)
-    except IntegrityError:
+    except IntegrityError as exc:
         await db.rollback()
+        error_str = str(exc.orig) if exc.orig is not None else str(exc)
+        if "uq_contract_filename_user" in error_str:
+            error_message = (
+                "A contract with this filename already exists. "
+                "Please rename your file and try again."
+            )
+        else:
+            error_message = (
+                "Database error: Missing or invalid User. "
+                "(Foreign Key Violation). Please ensure the user is seeded."
+            )
         total = await contract_service.get_contracts_count(db, user_id=user_id)
         contracts = await contract_service.get_contracts(
             db,
@@ -100,10 +111,7 @@ async def ui_upload_contract(
                 "request": request,
                 "contracts": contracts,
                 "total": total,
-                "error_message": (
-                    "A contract with this filename already exists. "
-                    "Please rename your file and try again."
-                ),
+                "error_message": error_message,
             },
             status_code=400,
         )
