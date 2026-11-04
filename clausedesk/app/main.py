@@ -90,6 +90,21 @@ async def validation_exception_handler(
     )
 
 
+@app.get("/", tags=["meta"])
+async def root() -> dict[str, str]:
+    """Return links to docs, UI, and health.
+
+    Returns:
+        Welcome payload with relative paths for `/docs`, `/ui`, and `/health`.
+    """
+    return {
+        "message": "Welcome to ClauseDesk API",
+        "documentation": "/docs",
+        "ui": "/ui",
+        "health": "/health",
+    }
+
+
 @app.get("/health", tags=["meta"])
 async def health() -> dict[str, str]:
     """Report process and database health.
