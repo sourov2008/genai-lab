@@ -45,7 +45,6 @@ models/
 # Large Data Files
 data/raw/
 data/processed/
-*.csv
 *.parquet
 
 # ==========================================
