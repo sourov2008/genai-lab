@@ -6,6 +6,9 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
+INPUT_PRICE_PER_1M = 0.15
+OUTPUT_PRICE_PER_1M = 0.60
+
 _ROOT = Path(__file__).resolve().parents[1]
 _CSV_PATH = _ROOT / "data" / "sweep_results.csv"
 _MD_PATH = _ROOT / "docs" / "sweep_comparison_table.md"
@@ -23,8 +26,25 @@ def _is_valid_json(value: str) -> bool:
     return value.strip().lower() in {"true", "1", "yes"}
 
 
-def _group_rows(rows: list[dict[str, str]]) -> dict[tuple[float, int], list[dict[str, str]]]:
-    """Bucket sweep rows by temperature and max_tokens.
+def _row_cost(in_tokens: float, out_tokens: float) -> float:
+    """Return USD cost for one completion using gpt-4o-mini list prices.
+
+    Args:
+        in_tokens: Prompt token count.
+        out_tokens: Completion token count.
+
+    Returns:
+        Estimated cost in USD.
+    """
+    return (in_tokens / 1_000_000 * INPUT_PRICE_PER_1M) + (
+        out_tokens / 1_000_000 * OUTPUT_PRICE_PER_1M
+    )
+
+
+def _group_rows(
+    rows: list[dict[str, str]],
+) -> dict[tuple[float, int], list[dict[str, str]]]:
+    """Bucket sweep rows by temperature and max_tokens, attaching per-row cost.
 
     Args:
         rows: DictWriter rows from `sweep_results.csv`.
@@ -33,27 +53,42 @@ def _group_rows(rows: list[dict[str, str]]) -> dict[tuple[float, int], list[dict
         Mapping of `(temperature, max_tokens)` to matching rows.
     """
     groups: dict[tuple[float, int], list[dict[str, str]]] = defaultdict(list)
+    cost_totals: dict[tuple[float, int], float] = defaultdict(float)
     for row in rows:
         key = (float(row["temperature"]), int(row["max_tokens"]))
+        in_tokens = float(row["in_tokens"])
+        out_tokens = float(row["out_tokens"])
+        cost = _row_cost(in_tokens, out_tokens)
+        cost_totals[key] += cost
+        row["_cost"] = str(cost)
         groups[key].append(row)
+    for key, group in groups.items():
+        for row in group:
+            row["_group_cost_total"] = str(cost_totals[key])
     return groups
 
 
-def _summarize(rows: list[dict[str, str]]) -> tuple[float, float, float]:
-    """Compute mean latency (s), mean out tokens, and JSON validity rate.
+def _summarize(
+    rows: list[dict[str, str]],
+) -> tuple[float, float, float, float, float]:
+    """Compute latency, token, validity, and 1K-request cost stats.
 
     Args:
         rows: Rows that share one hyperparameter pair.
 
     Returns:
-        `(avg_latency_s, avg_out_tokens, validity_pct)`.
+        `(avg_latency_s, avg_in_tokens, avg_out_tokens, validity_pct,
+        est_cost_per_1k)`.
     """
     n = len(rows)
     avg_latency_s = sum(float(r["latency_ms"]) for r in rows) / n / 1000
+    avg_in = sum(float(r["in_tokens"]) for r in rows) / n
     avg_out = sum(float(r["out_tokens"]) for r in rows) / n
     valid = sum(1 for r in rows if _is_valid_json(r["valid_json"]))
     validity_pct = 100.0 * valid / n
-    return avg_latency_s, avg_out, validity_pct
+    total_cost = sum(float(r["_cost"]) for r in rows)
+    est_cost_per_1k = (total_cost / n) * 1000
+    return avg_latency_s, avg_in, avg_out, validity_pct, est_cost_per_1k
 
 
 def build_markdown(groups: dict[tuple[float, int], list[dict[str, str]]]) -> str:
@@ -68,14 +103,17 @@ def build_markdown(groups: dict[tuple[float, int], list[dict[str, str]]]) -> str
     lines = [
         "# Production Hyperparameter Comparison",
         "",
-        "| Temperature | Max Tokens | Avg Latency (s) | Avg Out Tokens | JSON Validity |",
-        "| ---: | ---: | ---: | ---: | ---: |",
+        "| Temperature | Max Tokens | Avg Latency (s) | Avg In Tokens | Avg Out Tokens | JSON Validity | Est. Cost / 1K Requests |",
+        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for temp, max_tok in sorted(groups):
-        avg_latency_s, avg_out, validity_pct = _summarize(groups[(temp, max_tok)])
+        avg_latency_s, avg_in, avg_out, validity_pct, est_cost_per_1k = _summarize(
+            groups[(temp, max_tok)]
+        )
         lines.append(
             f"| {temp:.1f} | {max_tok} | {avg_latency_s:.2f} | "
-            f"{avg_out:.1f} | {validity_pct:.0f}% |"
+            f"{avg_in:.1f} | {avg_out:.1f} | {validity_pct:.0f}% | "
+            f"${est_cost_per_1k:.4f} |"
         )
     lines.append("")
     return "\n".join(lines)
