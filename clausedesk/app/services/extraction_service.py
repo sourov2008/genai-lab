@@ -57,13 +57,15 @@ async def extract_clauses_from_contract(
                 "schema": schema,
             },
         }
+    # Using locked production defaults: temp=0.0, max_tokens=1024. See docs/sweep_comparison_table.md for metrics.
     request = LLMRequest(
         messages=[
             Message(role="system", content=system_prompt),
             Message(role="user", content=contract.raw_text),
         ],
         response_format=response_format,
-        temperature=0.0,
+        temperature=settings.extraction_temperature,
+        max_tokens=settings.extraction_max_tokens,
     )
 
     parsed_data: ExtractionResult | None = None

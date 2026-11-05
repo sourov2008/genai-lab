@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 30.0
     prompt_version: str = Field(default="v1", alias="PROMPT_VERSION")
 
+    # Values: temp=0.0 (deterministic), max_tokens=1024 (prevents JSON truncation). See docs/sweep_comparison_table.md for metrics.
     extraction_temperature: float = 0.0
     extraction_max_tokens: int = 1024
     explanation_temperature: float = 0.3
