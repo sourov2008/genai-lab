@@ -39,9 +39,16 @@ Set `LLM_PROVIDER=openai` or `LLM_PROVIDER=groq` in `.env` locally, or in Render
 
 ## Provider Comparison (OpenAI vs Groq)
 
-Both providers achieve **100% JSON validity** on the golden set when extraction uses structured JSON (`json_object` / strict schema). The trade-off is speed versus verbosity: Groq is faster for long generations, but uses more tokens (different tokenizer/verbosity) compared to OpenAI.
+Both providers achieve **100% JSON validity** on the golden set when extraction uses structured JSON (`json_object` / strict schema).
 
-[View Provider Comparison](evals/provider_comparison_table.md)
+| Provider | Avg Latency (ms) | Avg Out Tokens | JSON Validity |
+| :--- | ---: | ---: | ---: |
+| Groq | 1441 | 316.5 | 100% |
+| OpenAI | 1990 | 105.4 | 100% |
+
+OpenAI is chosen as primary due to concise token generation (lower cost), and Groq is used as a fallback for its ultra-low latency during outages.
+
+[Architecture Decision Record](docs/provider_decision.md) · [View Provider Comparison](evals/provider_comparison_table.md)
 
 ## How to Rotate API Keys
 
