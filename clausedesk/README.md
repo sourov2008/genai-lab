@@ -10,6 +10,12 @@ ClauseDesk reads English commercial contracts, extracts a fixed set of clause ty
 - UI: [https://clausedesk-api.onrender.com/ui](https://clausedesk-api.onrender.com/ui)
 - API Docs: [https://clausedesk-api.onrender.com/docs](https://clausedesk-api.onrender.com/docs)
 
+## Evaluation & Metrics
+
+The project includes a hyperparameter sweep over the golden set (temperature × `max_tokens`) to measure latency, JSON validity, token use, and estimated cost. Production extraction is locked to **`temperature=0.0`** (deterministic quotes) and **`max_tokens=1024`** (avoids truncating long clause lists).
+
+[View the Hyperparameter Comparison Table](evals/evaluation_comparison_table.md)
+
 ## Architecture Overview
 
 Request flow: **Client → FastAPI router → service layer → LLM (OpenAI or Groq) → PostgreSQL**.

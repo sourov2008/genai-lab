@@ -1,4 +1,4 @@
-"""Summarize `data/sweep_results.csv` into a Markdown comparison table."""
+"""Summarize `evals/evaluation_results.csv` into a Markdown comparison table."""
 
 from __future__ import annotations
 
@@ -10,8 +10,9 @@ INPUT_PRICE_PER_1M = 0.15
 OUTPUT_PRICE_PER_1M = 0.60
 
 _ROOT = Path(__file__).resolve().parents[1]
-_CSV_PATH = _ROOT / "data" / "sweep_results.csv"
-_MD_PATH = _ROOT / "docs" / "sweep_comparison_table.md"
+_EVALS_DIR = _ROOT / "evals"
+_CSV_PATH = _EVALS_DIR / "evaluation_results.csv"
+_MD_PATH = _EVALS_DIR / "evaluation_comparison_table.md"
 
 
 def _is_valid_json(value: str) -> bool:
@@ -44,10 +45,10 @@ def _row_cost(in_tokens: float, out_tokens: float) -> float:
 def _group_rows(
     rows: list[dict[str, str]],
 ) -> dict[tuple[float, int], list[dict[str, str]]]:
-    """Bucket sweep rows by temperature and max_tokens, attaching per-row cost.
+    """Bucket evaluation rows by temperature and max_tokens, attaching per-row cost.
 
     Args:
-        rows: DictWriter rows from `sweep_results.csv`.
+        rows: DictWriter rows from `evals/evaluation_results.csv`.
 
     Returns:
         Mapping of `(temperature, max_tokens)` to matching rows.
@@ -95,13 +96,13 @@ def build_markdown(groups: dict[tuple[float, int], list[dict[str, str]]]) -> str
     """Render the comparison table.
 
     Args:
-        groups: Sweep rows keyed by `(temperature, max_tokens)`.
+        groups: Evaluation rows keyed by `(temperature, max_tokens)`.
 
     Returns:
         Markdown document with title and table.
     """
     lines = [
-        "# Production Hyperparameter Comparison",
+        "# Production Hyperparameter Evaluation",
         "",
         "| Temperature | Max Tokens | Avg Latency (s) | Avg In Tokens | Avg Out Tokens | JSON Validity | Est. Cost / 1K Requests |",
         "| ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
@@ -120,12 +121,13 @@ def build_markdown(groups: dict[tuple[float, int], list[dict[str, str]]]) -> str
 
 
 def main() -> None:
-    """Read the sweep CSV, print the table, and write `docs/sweep_comparison_table.md`."""
+    """Read the evaluation CSV, print the table, and write `evals/evaluation_comparison_table.md`."""
+    Path("evals").mkdir(exist_ok=True)
+    _EVALS_DIR.mkdir(exist_ok=True)
     with _CSV_PATH.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
     markdown = build_markdown(_group_rows(rows))
     print(markdown)
-    _MD_PATH.parent.mkdir(parents=True, exist_ok=True)
     _MD_PATH.write_text(markdown, encoding="utf-8")
 
 

@@ -61,3 +61,14 @@ Thumbs.db
 
 # Logs
 *.log
+
+# ==========================================
+# 5. Evaluation artifacts (tracked in Git)
+# ==========================================
+# Do not ignore sweep CSVs or the evals/ directory.
+!evals/
+!evals/**
+!evals/*.csv
+!clausedesk/evals/
+!clausedesk/evals/**
+!clausedesk/evals/*.csv

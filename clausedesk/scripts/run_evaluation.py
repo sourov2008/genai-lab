@@ -1,4 +1,4 @@
-"""Sweep temperature and max_tokens against the golden extraction set."""
+"""Evaluate temperature and max_tokens against the golden extraction set."""
 
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ from app.llm.prompt_loader import load_prompt
 
 _ROOT = Path(__file__).resolve().parents[1]
 _GOLDEN_SET = _ROOT / "data" / "golden_set.json"
-_RESULTS_CSV = _ROOT / "data" / "sweep_results.csv"
+_EVALS_DIR = _ROOT / "evals"
+_RESULTS_CSV = _EVALS_DIR / "evaluation_results.csv"
 _FIELDNAMES = [
     "case_id",
     "temperature",
@@ -35,7 +36,7 @@ _FIELDNAMES = [
 async def run_sweep() -> None:
     """Run every temperature × max_tokens combo on each golden case.
 
-    Writes `data/sweep_results.csv` with latency, token usage, and JSON validity.
+    Writes `evals/evaluation_results.csv` with latency, token usage, and JSON validity.
     """
     cases = json.loads(_GOLDEN_SET.read_text(encoding="utf-8"))
     settings = get_settings()
@@ -87,12 +88,13 @@ async def run_sweep() -> None:
                 }
             )
 
-    _RESULTS_CSV.parent.mkdir(parents=True, exist_ok=True)
+    Path("evals").mkdir(exist_ok=True)
+    _EVALS_DIR.mkdir(exist_ok=True)
     with _RESULTS_CSV.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=_FIELDNAMES)
         writer.writeheader()
         writer.writerows(results)
-    print(f"Wrote sweep results to {_RESULTS_CSV}")
+    print(f"Wrote evaluation results to {_RESULTS_CSV}")
 
 
 if __name__ == "__main__":
