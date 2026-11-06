@@ -1,20 +1,25 @@
-# W16: Provider Comparison Decision
+# Architecture Decision Record: LLM Provider Selection
 
-Golden-set evaluation at production extraction defaults (`temperature=0.0`, `max_tokens=1024`). Source: `evals/provider_comparison.csv`.
+Golden-set evaluation at production extraction defaults (`temperature=0.0`, `max_tokens=1024`). Metrics: `evals/provider_comparison.csv`.
 
 ## Comparison
 
-| Provider | Avg Latency (ms) | Avg Out Tokens | JSON Validity |
-| :--- | ---: | ---: | ---: |
-| Groq | 1441 | 316.5 | 100% |
-| OpenAI | 1990 | 105.4 | 100% |
+| Provider | Model | Avg Latency (ms) | Avg Out Tokens | JSON Validity |
+| :--- | :--- | ---: | ---: | ---: |
+| Groq | `openai/gpt-oss-120b` | 1441 | 316.5 | 100% |
+| OpenAI | `gpt-4o-mini` | 1990 | 105.4 | 100% |
 
-Both providers return valid JSON on every golden case when `response_format` is JSON mode. They differ on **length** and **speed**. Groq finishes about **550 ms** faster on average but emits roughly **3×** as many completion tokens. OpenAI is more concise at a modest latency cost.
+## Model & Instruction-Following Differences
+
+The Groq provider is running `openai/gpt-oss-120b` (an open-weight model). It generated about **3× more tokens** (more verbose) than the proprietary OpenAI `gpt-4o-mini` API (316.5 vs 105.4 average completion tokens). OpenAI stayed concise, which lowers output cost and keeps quotes closer to the contract text.
+
+Both achieved **100% JSON validity**. That comes from our structured output contract (`json_object` / strict JSON schema), not from either model being inherently better at free-form JSON.
 
 ## Decision
 
-**Primary provider: OpenAI.** Concise completions cut token cost (output is the expensive side of gpt-4o-mini pricing). Shorter quotes also stay closer to the contract text, which helps exact-match verification. Average latency of ~2.0 s is acceptable for interactive extract-and-review. Production `.env` / Render should keep `LLM_PROVIDER=openai`.
+- **Primary Provider: OpenAI (`gpt-4o-mini`).** Chosen for concise output, lower token cost at scale, and high precision.
+- **Fallback Provider: Groq (`openai/gpt-oss-120b`).** Chosen for ultra-low latency to handle OpenAI rate limits or downtime (about 550 ms faster on average; much faster on long generations).
 
-**Fallback provider: Groq.** Lower average latency (and a large gap on long case 10: ~2.3 s vs ~5.4 s) makes Groq the high-availability alternative when OpenAI is slow, rate-limited, or down. The extra tokens are the trade-off for that speed.
+## Implementation
 
-Because of the `LLMProvider` ABC, switching between these two is a 1-line `.env` change (`LLM_PROVIDER=openai` or `LLM_PROVIDER=groq`). Routers and extraction services do not import either SDK.
+Because of the `LLMProvider` adapter interface and the Factory pattern (`make_llm_provider`), switching between these two in production is a 1-line `.env` change (`LLM_PROVIDER=openai` or `LLM_PROVIDER=groq`). Routers and extraction services never import the vendor SDKs.
