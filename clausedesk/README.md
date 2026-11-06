@@ -12,7 +12,12 @@ ClauseDesk reads English commercial contracts, extracts a fixed set of clause ty
 
 ## Evaluation & Metrics
 
-The project includes a hyperparameter sweep over the golden set (temperature × `max_tokens`) to measure latency, JSON validity, token use, and estimated cost. Production extraction is locked to **`temperature=0.0`** (deterministic quotes) and **`max_tokens=1024`** (avoids truncating long clause lists).
+The project includes a hyperparameter evaluation over the golden set (temperature × `max_tokens`) to measure latency, JSON validity, token use, and estimated cost.
+
+**Production defaults:** `temperature=0.0`, `max_tokens=1024`.
+
+- Latency tracks output length, not temperature; `0.0` keeps extraction deterministic.
+- 1024 tokens prevents JSON truncation (improving JSON validity from 90% to 100%) at a negligible cost increase of ~$0.007 per 1,000 requests.
 
 [View the Hyperparameter Comparison Table](evals/evaluation_comparison_table.md)
 
