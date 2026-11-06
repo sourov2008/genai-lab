@@ -29,6 +29,18 @@ Routers parse HTTP and return responses. Services own extraction, verification, 
 
 Stack: FastAPI, SQLAlchemy 2.0 (async), Postgres, Docker, and Render.
 
+## Provider Switching
+
+OpenAI and Groq both implement the `LLMProvider` adapter. Extraction, verification, and retries talk only to that interface, so switching backends does not require service or router changes.
+
+Set `LLM_PROVIDER=openai` or `LLM_PROVIDER=groq` in `.env` locally, or in Render Environment Variables in production. Restart (or redeploy) so the process picks up the new value. Use the matching API key (`OPENAI_API_KEY` or `GROQ_API_KEY`).
+
+## Provider Comparison (OpenAI vs Groq)
+
+Both providers achieve **100% JSON validity** on the golden set when extraction uses structured JSON (`json_object` / strict schema). The trade-off is speed versus verbosity: Groq is faster for long generations, but uses more tokens (different tokenizer/verbosity) compared to OpenAI.
+
+[View Provider Comparison](evals/provider_comparison_table.md)
+
 ## How to Rotate API Keys
 
 API keys live in Render Environment Variables, not in the repo. `.env` is for local development only and is not deployed.
