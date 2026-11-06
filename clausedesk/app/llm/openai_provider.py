@@ -39,6 +39,7 @@ class OpenAIProvider(LLMProvider):
         self._timeout_s = timeout_s
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
+
         """Run a chat completion and map SDK errors to `LLMError` types.
 
         Args:

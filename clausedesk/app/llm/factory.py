@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.core.config import Settings, get_settings
 from app.llm.base import LLMProvider
+from app.llm.fallback import FallbackProvider
 from app.llm.groq_provider import GroqProvider
 from app.llm.openai_provider import OpenAIProvider
 
@@ -15,18 +16,25 @@ def make_llm_provider(settings: Settings) -> LLMProvider:
         settings: Application settings including provider and credentials.
 
     Returns:
-        An `OpenAIProvider` when `llm_provider` is `openai`, or a
-        `GroqProvider` when `llm_provider` is `groq`.
+        OpenAI (optionally wrapped with Groq fallback) or Groq alone.
 
     Raises:
         ValueError: If the provider name is not supported.
     """
     if settings.llm_provider == "openai":
-        return OpenAIProvider(
+        primary = OpenAIProvider(
             settings.openai_api_key,
             settings.openai_model,
             settings.llm_timeout_s,
         )
+        if settings.groq_api_key:
+            fallback = GroqProvider(
+                settings.groq_api_key,
+                settings.groq_model,
+                settings.llm_timeout_s,
+            )
+            return FallbackProvider(primary, fallback)
+        return primary
     elif settings.llm_provider == "groq":
         return GroqProvider(
             settings.groq_api_key,
