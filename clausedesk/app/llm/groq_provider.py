@@ -30,7 +30,7 @@ class GroqProvider(LLMProvider):
 
         Args:
             api_key: Groq API key.
-            model: Model id (for example `llama-3.3-70b-versatile`).
+            model: Model id (for example `openai/gpt-oss-120b`).
             timeout_s: Per-request timeout in seconds.
         """
         self._client = AsyncGroq(api_key=api_key, timeout=timeout_s)
