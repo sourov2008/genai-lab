@@ -20,6 +20,12 @@ Both achieved **100% JSON validity**. That comes from our structured output cont
 - **Primary Provider: OpenAI (`gpt-4o-mini`).** Chosen for concise output, lower token cost at scale, and high precision.
 - **Fallback Provider: Groq (`openai/gpt-oss-120b`).** Chosen for ultra-low latency to handle OpenAI rate limits or downtime (about 550 ms faster on average; much faster on long generations).
 
+## Resilience & Fallback Strategy
+
+We use the **Decorator Pattern** to wrap the primary and fallback providers. `FallbackProvider` implements `LLMProvider` and holds an OpenAI primary plus a Groq secondary. Extraction still calls `complete()` once.
+
+If the primary (OpenAI) throws `LLMServerError` or `LLMRateLimitError` (or a timeout), the decorator logs a warning and calls Groq. The API does not crash. Auth and bad-request errors are not retried on Groq; those need a config or prompt fix.
+
 ## Implementation
 
 Because of the `LLMProvider` adapter interface and the Factory pattern (`make_llm_provider`), switching between these two in production is a 1-line `.env` change (`LLM_PROVIDER=openai` or `LLM_PROVIDER=groq`). Routers and extraction services never import the vendor SDKs.

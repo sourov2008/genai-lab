@@ -35,6 +35,8 @@ OpenAI and Groq both implement the `LLMProvider` adapter. Extraction, verificati
 
 Set `LLM_PROVIDER=openai` or `LLM_PROVIDER=groq` in `.env` locally, or in Render Environment Variables in production. Restart (or redeploy) so the process picks up the new value. Use the matching API key (`OPENAI_API_KEY` or `GROQ_API_KEY`).
 
+- **Automatic Fallback:** If the primary provider fails due to an outage or rate limit, the system automatically switches to the secondary provider using a FallbackProvider decorator.
+
 ## Provider Comparison (OpenAI vs Groq)
 
 Both providers achieve **100% JSON validity** on the golden set when extraction uses structured JSON (`json_object` / strict schema). The trade-off is speed versus verbosity: Groq is faster for long generations, but uses more tokens (different tokenizer/verbosity) compared to OpenAI.
