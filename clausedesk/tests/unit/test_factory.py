@@ -9,15 +9,18 @@ from app.llm.openai_provider import OpenAIProvider
 
 
 def test_make_llm_provider_openai() -> None:
-    """Select OpenAI when `llm_provider` is `openai`."""
+    """Select OpenAI when `llm_provider` is `openai` and Groq is unset."""
     settings = get_settings()
-    original = settings.llm_provider
+    original_provider = settings.llm_provider
+    original_groq_key = settings.groq_api_key
     try:
         settings.llm_provider = "openai"
+        settings.groq_api_key = ""
         provider = make_llm_provider(settings)
         assert isinstance(provider, OpenAIProvider)
     finally:
-        settings.llm_provider = original
+        settings.llm_provider = original_provider
+        settings.groq_api_key = original_groq_key
 
 
 def test_make_llm_provider_groq() -> None:

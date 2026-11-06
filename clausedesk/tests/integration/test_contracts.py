@@ -234,7 +234,7 @@ async def test_extract_contract(client: AsyncClient, test_db: AsyncSession) -> N
         "/contracts/",
         data={
             "filename": "extract.pdf",
-            "raw_text": "This is a test for termination.",
+            "raw_text": "This contract allows termination on thirty days notice.",
         },
     )
     contract_id = created.json()["id"]

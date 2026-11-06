@@ -35,7 +35,7 @@ class FakeLLMProvider(LLMProvider):
         assert request.response_format is not None
         assert request.response_format.get("type") in {"json_object", "json_schema"}
         return LLMResponse(
-            text='{"clauses": [{"clause_type": "termination", "quote": "test", "confidence": 0.9}]}',
+            text='{"clauses": [{"clause_type": "termination", "quote": "termination", "confidence": 0.9}]}',
             model="fake",
             provider="fake",
             usage=LLMUsage(input_tokens=0, output_tokens=0, cost_usd=0.0),
