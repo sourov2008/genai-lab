@@ -50,7 +50,7 @@ class OpenAIProvider(LLMProvider):
         """
         started = time.monotonic()
         request_id = uuid.uuid4().hex[:12]
-        messages = [m.model_dump() for m in request.messages]
+        messages = [m.model_dump(exclude_unset=True) for m in request.messages]
         create_kwargs: dict = {
             "model": self._model,
             "messages": messages,
@@ -59,6 +59,8 @@ class OpenAIProvider(LLMProvider):
         }
         if request.response_format is not None:
             create_kwargs["response_format"] = request.response_format
+        if request.tools is not None:
+            create_kwargs["tools"] = request.tools
         try:
             raw = await self._client.chat.completions.create(**create_kwargs)
         except openai.APIStatusError as exc:
@@ -67,7 +69,13 @@ class OpenAIProvider(LLMProvider):
             raise LLMTimeoutError(f"openai: {exc}") from exc
 
         latency_ms = int((time.monotonic() - started) * 1000)
-        text = raw.choices[0].message.content or ""
+        message = raw.choices[0].message
+        text = message.content or ""
+        tool_calls = (
+            [tc.model_dump() for tc in raw.choices[0].message.tool_calls]
+            if raw.choices[0].message.tool_calls
+            else None
+        )
         usage = raw.usage
         input_tokens = usage.prompt_tokens if usage is not None else 0
         output_tokens = usage.completion_tokens if usage is not None else 0
@@ -83,6 +91,7 @@ class OpenAIProvider(LLMProvider):
             ),
             latency_ms=latency_ms,
             request_id=request_id,
+            tool_calls=tool_calls,
         )
 
     def _raise_for_status(self, exc: APIStatusError) -> None:

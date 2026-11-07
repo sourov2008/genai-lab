@@ -5,14 +5,19 @@ from __future__ import annotations
 import abc
 import typing
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Message(BaseModel):
     """A single chat message sent to an LLM."""
 
+    model_config = ConfigDict(extra="allow")
+
     role: str
-    content: str
+    content: str | None = None
+    tool_calls: list[dict] | None = None
+    tool_call_id: str | None = None
+    name: str | None = None
 
 
 class LLMRequest(BaseModel):
@@ -27,6 +32,7 @@ class LLMRequest(BaseModel):
     temperature: float = 0.0
     max_tokens: int = 1024
     response_format: dict | None = None
+    tools: list[dict] | None = None
 
 
 class LLMUsage(BaseModel):
@@ -46,6 +52,7 @@ class LLMResponse(BaseModel):
     usage: LLMUsage
     latency_ms: int
     request_id: str
+    tool_calls: list[dict] | None = None
 
 
 class LLMProvider(abc.ABC):
