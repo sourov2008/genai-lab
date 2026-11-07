@@ -4,5 +4,6 @@ from .user import User
 from .contract import Contract
 from .prompt_run import PromptRun
 from .clause import Clause
+from .agent_action import AgentAction
 
-__all__ = ["Base", "User", "Contract", "PromptRun", "Clause"]
+__all__ = ["Base", "User", "Contract", "PromptRun", "Clause", "AgentAction"]

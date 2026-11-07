@@ -7,7 +7,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Clause, Contract
+from app.models import AgentAction, Clause, Contract
 from app.models.clause import ClauseStatus
 
 logger = logging.getLogger(__name__)
@@ -76,6 +76,37 @@ TOOL_SCHEMAS: list[dict] = [
                     },
                 },
                 "required": ["clause_id", "reason"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_action",
+            "description": (
+                "Propose an irreversible action (like rejecting a contract). "
+                "Requires human approval."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "contract_id": {
+                        "type": "integer",
+                        "description": "Database id of the contract.",
+                    },
+                    "action_type": {
+                        "type": "string",
+                        "description": (
+                            "Proposed action, such as REJECT_CONTRACT or "
+                            "APPROVE_CONTRACT."
+                        ),
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why this action should be taken.",
+                    },
+                },
+                "required": ["contract_id", "action_type", "reason"],
             },
         },
     },
@@ -166,4 +197,43 @@ async def flag_for_review(
     return {
         "status": "success",
         "message": f"Clause {clause_id} flagged for review. Reason: {reason}",
+    }
+
+
+async def propose_action(
+    db: AsyncSession,
+    contract_id: int,
+    action_type: str,
+    reason: str,
+) -> dict:
+    """Create a pending `AgentAction` for human approval.
+
+    Args:
+        db: Active async database session.
+        contract_id: Parent contract primary key.
+        action_type: Proposed action key, such as REJECT_CONTRACT.
+        reason: Why the agent is proposing this action.
+
+    Returns:
+        Pending-approval payload including the new `action_id`.
+    """
+    action = AgentAction(
+        contract_id=contract_id,
+        action_type=action_type,
+        reason=reason,
+        status="pending",
+    )
+    db.add(action)
+    await db.commit()
+    await db.refresh(action)
+    logger.info(
+        "Proposed action_id=%s type=%s contract_id=%s",
+        action.id,
+        action_type,
+        contract_id,
+    )
+    return {
+        "status": "pending_approval",
+        "action_id": action.id,
+        "message": "Action proposed. Waiting for human approval.",
     }

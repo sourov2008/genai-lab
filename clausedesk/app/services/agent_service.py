@@ -13,6 +13,7 @@ from app.services.agent_tools import (
     TOOL_SCHEMAS,
     flag_for_review,
     get_clause,
+    propose_action,
     search_similar_clauses,
 )
 
@@ -23,8 +24,10 @@ _SYSTEM_PROMPT = (
     "this contract using the provided tools. Think step by step. If you find "
     "a missing clause or a conflict, you MUST immediately use the "
     "`flag_for_review` tool to flag it. Do NOT ask the user for permission. "
-    "Act autonomously. Once you have taken the necessary actions, provide a "
-    "final summary of what you did."
+    "Act autonomously. If you decide a contract must be rejected or approved, "
+    "you MUST use `propose_action`. Do NOT assume the action is complete until "
+    "you get a pending_approval response. Once you have taken the necessary "
+    "actions, provide a final summary of what you did."
 )
 
 
@@ -56,6 +59,8 @@ async def _execute_tool(db: AsyncSession, name: str, args: dict) -> dict | list[
         return await search_similar_clauses(db, **args)
     elif name == "flag_for_review":
         return await flag_for_review(db, **args)
+    elif name == "propose_action":
+        return await propose_action(db, **args)
     return {"error": f"Unknown tool: {name}"}
 
 
