@@ -27,7 +27,11 @@ _SYSTEM_PROMPT = (
     "Act autonomously. If you decide a contract must be rejected or approved, "
     "you MUST use `propose_action`. Do NOT assume the action is complete until "
     "you get a pending_approval response. Once you have taken the necessary "
-    "actions, provide a final summary of what you did."
+    "actions, provide a final summary of what you did. CRITICAL: Review your "
+    "previous messages. Do NOT call the same tool with the exact same "
+    "arguments twice. If a clause is missing, do not try to flag a "
+    "non-existent clause ID; instead, proceed to propose an action to reject "
+    "or review the entire contract."
 )
 
 
@@ -79,8 +83,10 @@ async def run_compliance_check(
         max_steps: Maximum LLM round-trips before stopping.
 
     Returns:
-        `status` plus `final_answer`, and `steps_taken` when the model stops.
+        `status`, `final_answer`, `tools_called`, and `steps_taken` when the
+        model stops.
     """
+    tools_called: list[str] = []
     messages: list[Message] = [
         Message(role="system", content=_SYSTEM_PROMPT),
         Message(
@@ -119,11 +125,14 @@ async def run_compliance_check(
                 "status": "success",
                 "final_answer": response.text,
                 "steps_taken": step + 1,
+                "tools_called": tools_called,
             }
 
         assistant_msg = {"role": "assistant", "content": response.text}
         if response.tool_calls:
             assistant_msg["tool_calls"] = response.tool_calls
+            for tc in response.tool_calls:
+                tools_called.append(tc["function"]["name"])
         messages.append(Message.model_validate(assistant_msg))
         for tc in response.tool_calls:
             name = tc["function"]["name"]
@@ -144,4 +153,5 @@ async def run_compliance_check(
     return {
         "status": "max_steps_reached",
         "final_answer": "Agent stopped to prevent infinite loops.",
+        "tools_called": tools_called,
     }

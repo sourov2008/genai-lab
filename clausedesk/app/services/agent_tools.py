@@ -61,14 +61,20 @@ TOOL_SCHEMAS: list[dict] = [
         "function": {
             "name": "flag_for_review",
             "description": (
-                "Set a clause status to review and record a human-readable reason."
+                "Set an existing clause to review. Do not call this for a "
+                "missing clause; use propose_action on the contract instead. "
+                "clause_id must be a real database id returned by get_clause "
+                "or search_similar_clauses."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "clause_id": {
                         "type": "integer",
-                        "description": "Database id of the clause.",
+                        "description": (
+                            "Database id of an existing clause. Do not invent "
+                            "an id for a missing clause."
+                        ),
                     },
                     "reason": {
                         "type": "string",
@@ -177,11 +183,13 @@ async def flag_for_review(
     clause_id: int,
     reason: str,
 ) -> dict:
-    """Mark a clause as needing human review.
+    """Mark an existing clause as needing human review.
+
+    Do not call this for a missing clause; `clause_id` must already exist.
 
     Args:
         db: Active async database session.
-        clause_id: Clause primary key.
+        clause_id: Existing clause primary key (integer).
         reason: Note stored only in the tool response (not a DB column).
 
     Returns:
