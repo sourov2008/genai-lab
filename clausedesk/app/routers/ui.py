@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import io
 import pathlib
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pypdf import PdfReader
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,8 +18,10 @@ from app.core.config import get_settings
 from app.core.security import get_current_user_id
 from app.db.session import get_db
 from app.llm.factory import make_llm_provider
+from app.models import AgentAction
 from app.models.clause import ClauseStatus
 from app.services import contract_service, extraction_service
+from app.services.agent_service import run_compliance_check
 
 router = APIRouter(prefix="/ui", tags=["ui"], include_in_schema=False)
 templates = Jinja2Templates(directory="app/templates")
@@ -142,12 +146,20 @@ async def ui_contract_detail(
     contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
+    actions_result = await db.execute(
+        select(AgentAction)
+        .where(AgentAction.contract_id == contract_id)
+        .order_by(AgentAction.id)
+    )
+    agent_actions = actions_result.scalars().all()
     return templates.TemplateResponse(
         request=request,
         name="detail.html",
         context={
             "request": request,
             "contract": contract,
+            "agent_actions": agent_actions,
+            "error_message": request.query_params.get("error_message"),
         },
     )
 
@@ -176,6 +188,43 @@ async def ui_extract_contract(
         raise HTTPException(status_code=404, detail="Contract not found")
     llm = make_llm_provider(get_settings())
     await extraction_service.extract_clauses_from_contract(db, contract, llm)
+    return RedirectResponse(url=f"/ui/contracts/{contract_id}", status_code=303)
+
+
+@router.post("/contracts/{contract_id}/agent")
+async def ui_run_agent(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> RedirectResponse:
+    """Run the compliance agent for a contract and return to the detail page.
+
+    Args:
+        contract_id: Contract primary key.
+        db: Request-scoped database session.
+        user_id: Authenticated user id.
+
+    Returns:
+        Redirect to `/ui/contracts/{contract_id}` after the agent run.
+
+    Raises:
+        HTTPException: 404 if the contract is missing or not owned.
+    """
+    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    llm = make_llm_provider(get_settings())
+    try:
+        await run_compliance_check(db, contract, llm)
+    except Exception as exc:
+        error_message = str(exc)
+        return RedirectResponse(
+            url=(
+                f"/ui/contracts/{contract_id}"
+                f"?error_message={quote(error_message)}"
+            ),
+            status_code=303,
+        )
     return RedirectResponse(url=f"/ui/contracts/{contract_id}", status_code=303)
 
 

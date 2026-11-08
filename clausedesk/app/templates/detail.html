@@ -25,9 +25,14 @@
   </div>
 </header>
 
-<form method="POST" action="/ui/contracts/{{ contract.id }}/extract" class="mb-4">
-  <button type="submit" class="btn btn-primary">Run Extraction</button>
-</form>
+<div class="mb-4">
+  <form method="POST" action="/ui/contracts/{{ contract.id }}/extract" class="d-inline">
+    <button type="submit" class="btn btn-primary">Run Extraction</button>
+  </form>
+  <form method="POST" action="/ui/contracts/{{ contract.id }}/agent" class="d-inline">
+    <button type="submit" class="btn btn-warning ms-2">Run Playbook Check</button>
+  </form>
+</div>
 
 <div class="card mb-4">
   <div class="card-header text-muted">Contract text</div>
@@ -80,5 +85,37 @@
   {% endfor %}
 {% else %}
 <p class="text-muted">No clauses extracted yet.</p>
+{% endif %}
+
+<h2 class="h5 mb-3">Agent Compliance Check</h2>
+{% if not agent_actions %}
+<p class="text-muted">No agent actions proposed yet. Run the playbook check.</p>
+{% else %}
+  {% for action in agent_actions %}
+  <div class="card mb-4 shadow-sm border-0">
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center gap-2 border-bottom pb-2 mb-3">
+        {% if action.action_type == "REJECT_CONTRACT" %}
+        <span class="fw-semibold text-danger">Reject Contract</span>
+        {% elif action.action_type == "APPROVE_CONTRACT" %}
+        <span class="fw-semibold text-success">Approve Contract</span>
+        {% else %}
+        <span class="fw-semibold">{{ action.action_type }}</span>
+        {% endif %}
+        {% if action.status == "pending" %}
+        <span class="badge bg-warning text-dark">Pending Review</span>
+        {% elif action.status == "approved" %}
+        <span class="badge bg-success">Approved</span>
+        {% elif action.status == "rejected" %}
+        <span class="badge bg-danger">Rejected</span>
+        {% endif %}
+        {% if action.created_at %}
+        <span class="text-muted">{{ action.created_at.strftime("%b %d, %Y at %I:%M %p") }}</span>
+        {% endif %}
+      </div>
+      <p class="mb-0">{{ action.reason }}</p>
+    </div>
+  </div>
+  {% endfor %}
 {% endif %}
 {% endblock %}

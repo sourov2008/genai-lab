@@ -29,6 +29,12 @@ Routers parse HTTP and return responses. Services own extraction, verification, 
 
 Stack: FastAPI, SQLAlchemy 2.0 (async), Postgres, Docker, and Render.
 
+## Agentic Playbook Checker
+
+ClauseDesk includes an autonomous ReAct-loop agent that checks a contract against playbook rules. It uses database query tools (`get_clause`, `flag_for_review`) and a similarity search stub (`search_similar_clauses`) to find missing clause types and cross-reference conflicts (for example a low liability cap versus unlimited indemnification).
+
+The loop is bounded to **five steps**. Irreversible decisions such as rejecting or approving a contract go through `propose_action` and stay `pending` until a human approves them. On the contract detail page, **Run Playbook Check** starts the agent and lists proposed actions.
+
 ## Provider Switching
 
 OpenAI and Groq both implement the `LLMProvider` adapter. Extraction, verification, and retries talk only to that interface, so switching backends does not require service or router changes.
