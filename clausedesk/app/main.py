@@ -15,12 +15,17 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.session import get_engine
+from app.routers.auth import auth_router
 from app.routers.contracts import router as contracts_router
 from app.routers.ui import router as ui_router
 
 logger = logging.getLogger("clausedesk")
 
 tags_metadata = [
+    {
+        "name": "auth",
+        "description": "Register an account and obtain a JWT.",
+    },
     {
         "name": "contracts",
         "description": "Operations with contracts. Upload, extract, and manage clauses.",
@@ -56,11 +61,12 @@ app = FastAPI(
         "**Not a chatbot. Not legal advice.**"
     ),
     version="0.1.0",
-    contact={"name": "ClauseDesk Team", "email": "api@clausedesk.local"},
+    contact={"name": "ClauseDesk Team", "email": "api@clausedesk.com"},
     openapi_tags=tags_metadata,
     swagger_ui_parameters={"deepLinking": True, "displayRequestDuration": True},
     lifespan=lifespan,
 )
+app.include_router(auth_router)
 app.include_router(contracts_router)
 app.include_router(ui_router)
 
