@@ -7,8 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Contract
-from app.models.clause import Clause, ClauseStatus
+from app.models import Clause, Contract
+from app.models.clause import ClauseStatus
 from app.models.contract import ContractStatus
 
 
@@ -210,3 +210,29 @@ async def update_clause_status(
     await db.commit()
     await db.refresh(clause)
     return clause
+
+
+async def search_clauses_by_vector(
+    db: AsyncSession,
+    query_vector: list[float],
+    limit: int = 5,
+) -> list[Clause]:
+    """Return clauses nearest to `query_vector` by cosine distance.
+
+    Rows with a NULL embedding are excluded so they are not ranked.
+
+    Args:
+        db: Active async database session.
+        query_vector: Query embedding (1536 dimensions).
+        limit: Maximum number of clauses to return.
+
+    Returns:
+        Clauses ordered from nearest to farthest.
+    """
+    result = await db.execute(
+        select(Clause)
+        .where(Clause.embedding.is_not(None))
+        .order_by(Clause.embedding.cosine_distance(query_vector))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
