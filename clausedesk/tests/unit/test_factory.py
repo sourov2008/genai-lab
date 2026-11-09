@@ -12,24 +12,30 @@ def test_make_llm_provider_openai() -> None:
     """Select OpenAI when `llm_provider` is `openai` and Groq is unset."""
     settings = get_settings()
     original_provider = settings.llm_provider
+    original_openai_key = settings.openai_api_key
     original_groq_key = settings.groq_api_key
     try:
         settings.llm_provider = "openai"
+        settings.openai_api_key = "sk-dummy-key-for-ci"
         settings.groq_api_key = ""
         provider = make_llm_provider(settings)
         assert isinstance(provider, OpenAIProvider)
     finally:
         settings.llm_provider = original_provider
+        settings.openai_api_key = original_openai_key
         settings.groq_api_key = original_groq_key
 
 
 def test_make_llm_provider_groq() -> None:
     """Select Groq when `llm_provider` is `groq`."""
     settings = get_settings()
-    original = settings.llm_provider
+    original_provider = settings.llm_provider
+    original_groq_key = settings.groq_api_key
     try:
         settings.llm_provider = "groq"
+        settings.groq_api_key = "gsk-dummy-key-for-ci"
         provider = make_llm_provider(settings)
         assert isinstance(provider, GroqProvider)
     finally:
-        settings.llm_provider = original
+        settings.llm_provider = original_provider
+        settings.groq_api_key = original_groq_key
