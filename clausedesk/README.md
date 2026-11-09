@@ -46,6 +46,16 @@ ClauseDesk includes an autonomous ReAct-loop agent that checks a contract agains
 
 The loop is bounded to **five steps**. Irreversible decisions such as rejecting or approving a contract go through `propose_action` and stay `pending` until a human approves them. On the contract detail page, **Run Playbook Check** starts the agent and lists proposed actions.
 
+## Semantic Search & Embeddings
+
+ClauseDesk supports **vector search** with Postgres `pgvector` and OpenAI embeddings (`text-embedding-3-small`, 1536 dimensions). Clause quotes are stored as embeddings; `GET /contracts/search?q=...` ranks by cosine distance.
+
+You can ask in natural language (for example, "What is the liability limit?") instead of matching exact keywords.
+
+## Observability (Tracing)
+
+**Langfuse** traces LLM generations and the agent's ReAct loop. Each LLM call records the prompt, token counts, and estimated cost, which you can inspect in the Langfuse dashboard. Set `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` (see `.env.example`).
+
 ## Provider Switching
 
 OpenAI and Groq both implement the `LLMProvider` adapter. Extraction, verification, and retries talk only to that interface, so switching backends does not require service or router changes.
