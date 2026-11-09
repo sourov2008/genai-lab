@@ -26,12 +26,14 @@ def make_llm_provider(settings: Settings) -> LLMProvider:
             settings.openai_api_key,
             settings.openai_model,
             settings.llm_timeout_s,
+            pricing=settings.model_pricing.get(settings.openai_model),
         )
         if settings.groq_api_key:
             fallback = GroqProvider(
                 settings.groq_api_key,
                 settings.groq_model,
                 settings.llm_timeout_s,
+                pricing=settings.model_pricing.get(settings.groq_model),
             )
             return FallbackProvider(primary, fallback)
         return primary
@@ -40,6 +42,7 @@ def make_llm_provider(settings: Settings) -> LLMProvider:
             settings.groq_api_key,
             settings.groq_model,
             settings.llm_timeout_s,
+            pricing=settings.model_pricing.get(settings.groq_model),
         )
     raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
 

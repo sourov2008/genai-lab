@@ -10,7 +10,7 @@ import openai
 from langfuse.openai import AsyncOpenAI
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 
-from app.core.config import Settings
+from app.core.config import ModelPricing
 from app.llm.base import LLMProvider, LLMRequest, LLMResponse, LLMUsage
 from app.llm.errors import (
     LLMAuthError,
@@ -27,17 +27,25 @@ logger = logging.getLogger(__name__)
 class OpenAIProvider(LLMProvider):
     """LLMProvider backed by the Langfuse-traced OpenAI async SDK."""
 
-    def __init__(self, api_key: str, model: str, timeout_s: float = 30.0) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        timeout_s: float = 30.0,
+        pricing: ModelPricing | None = None,
+    ) -> None:
         """Create an OpenAI client for a single model.
 
         Args:
             api_key: OpenAI API key.
             model: Model id (for example `gpt-4o-mini`).
             timeout_s: Per-request timeout in seconds.
+            pricing: Per-1M-token rates used for `cost_usd`.
         """
         self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_s)
         self._model = model
         self._timeout_s = timeout_s
+        self._pricing = pricing or ModelPricing()
 
     async def complete(self, request: LLMRequest) -> LLMResponse:
 
@@ -80,6 +88,9 @@ class OpenAIProvider(LLMProvider):
         usage = raw.usage
         input_tokens = usage.prompt_tokens if usage is not None else 0
         output_tokens = usage.completion_tokens if usage is not None else 0
+        cost = (input_tokens / 1_000_000 * self._pricing.input_per_1m) + (
+            output_tokens / 1_000_000 * self._pricing.output_per_1m
+        )
         logger.debug("openai complete request_id=%s latency_ms=%s", request_id, latency_ms)
         return LLMResponse(
             text=text,
@@ -88,7 +99,7 @@ class OpenAIProvider(LLMProvider):
             usage=LLMUsage(
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
-                cost_usd=0.0,
+                cost_usd=cost,
             ),
             latency_ms=latency_ms,
             request_id=request_id,

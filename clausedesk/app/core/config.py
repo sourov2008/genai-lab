@@ -5,10 +5,17 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+
+class ModelPricing(BaseModel):
+    """USD price per 1M input and output tokens for one model."""
+
+    input_per_1m: float = 0.0
+    output_per_1m: float = 0.0
 
 
 class Settings(BaseSettings):
@@ -52,6 +59,11 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="change-me-in-production", alias="JWT_SECRET")
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 10080
+
+    model_pricing: dict[str, ModelPricing] = {
+        "gpt-4o-mini": ModelPricing(input_per_1m=0.15, output_per_1m=0.60),
+        "openai/gpt-oss-120b": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
+    }
 
     # Observability
     langfuse_public_key: str = Field(default="", alias="LANGFUSE_PUBLIC_KEY")
