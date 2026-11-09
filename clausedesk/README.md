@@ -31,6 +31,15 @@ Routers parse HTTP and return responses. Services own extraction, verification, 
 
 Stack: FastAPI, SQLAlchemy 2.0 (async), Postgres, Docker, and Render.
 
+## Authentication & Security
+
+The API authenticates with **JWT** (JSON Web Tokens). Register at `POST /auth/register` and exchange email and password for a token at `POST /auth/login`. Passwords are hashed with **bcrypt** through passlib (`bcrypt_sha256`) before they are stored.
+
+- **HTML UI:** the login form sets an **httpOnly** `access_token` cookie so JavaScript cannot read the JWT (XSS protection).
+- **API clients:** send `Authorization: Bearer <token>` on protected routes.
+
+Protected contract routes resolve the current user from the bearer token or cookie. Missing or invalid credentials return 401; the UI redirects to `/ui/login`.
+
 ## Agentic Playbook Checker
 
 ClauseDesk includes an autonomous ReAct-loop agent that checks a contract against playbook rules. It uses database query tools (`get_clause`, `flag_for_review`) and a similarity search stub (`search_similar_clauses`) to find missing clause types and cross-reference conflicts (for example a low liability cap versus unlimited indemnification).
@@ -168,6 +177,10 @@ Tests use an in-memory SQLite database and run independently of Docker. From the
 ```bash
 pytest tests/ -v
 ```
+
+## Continuous Integration (CI)
+
+GitHub Actions runs `pytest` on every push and pull request to `main` (see `.github/workflows/ci.yml`). The pipeline installs dependencies with `uv sync --frozen` and executes `uv run pytest tests/ -v` so broken tests, regressions, and auth/ownership checks fail the build before they merge.
 
 ## Project structure
 
