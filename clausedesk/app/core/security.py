@@ -1,15 +1,22 @@
-"""Password hashing and JWT helpers for authentication."""
+"""Password hashing, JWT helpers, and the current-user dependency."""
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.db.session import get_db
+from app.models import User
 
 pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 def get_password_hash(password: str) -> str:
@@ -76,12 +83,50 @@ def decode_access_token(token: str) -> dict:
     )
 
 
-async def get_current_user_id() -> int:
-    """Return the authenticated user id.
+async def get_current_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    token: str | None = Depends(oauth2_scheme),
+) -> User:
+    """Resolve the authenticated user from a bearer token or cookie.
 
-    Mock implementation until JWT auth is wired into dependencies.
+    Args:
+        request: Incoming HTTP request (cookie fallback).
+        db: Request-scoped database session.
+        token: Optional OAuth2 bearer token.
 
     Returns:
-        Hardcoded seed user id `1`.
+        The authenticated `User` row.
+
+    Raises:
+        HTTPException: 401 if the token is missing, invalid, or the user
+            does not exist.
     """
-    return 1
+    if token is None:
+        token = request.cookies.get("access_token")
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    try:
+        payload = decode_access_token(token)
+    except JWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        ) from exc
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    result = await db.execute(select(User).where(User.id == int(user_id)))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    return user

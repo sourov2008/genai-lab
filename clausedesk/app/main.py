@@ -8,8 +8,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.exceptions import HTTPException, RequestValidationError
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
@@ -93,6 +93,28 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=422,
         content={"error": "Validation Error", "details": exc.errors()},
+    )
+
+
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(
+    request: Request,
+    exc: HTTPException,
+) -> JSONResponse | RedirectResponse:
+    """Send unauthenticated UI visitors to login; otherwise return JSON.
+
+    Args:
+        request: Incoming request (used to detect `/ui` paths).
+        exc: Raised HTTP error.
+
+    Returns:
+        Redirect to `/ui/login` for UI 401s, otherwise a JSON error body.
+    """
+    if request.url.path.startswith("/ui") and exc.status_code == 401:
+        return RedirectResponse(url="/ui/login")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
     )
 
 

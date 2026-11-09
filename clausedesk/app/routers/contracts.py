@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user
 from app.db.session import get_db
 from app.llm.base import LLMProvider
 from app.llm.errors import LLMBadRequestError
 from app.llm.factory import get_llm
+from app.models import User
 from app.schemas.clause import ClauseResponse
 from app.schemas.contract import (
     ContractDetailResponse,
@@ -28,7 +29,7 @@ async def upload_contract(
     filename: str = Form(...),
     raw_text: str = Form(...),
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
 ) -> ContractUploadResponse:
     """Create a contract from multipart form fields.
 
@@ -36,14 +37,14 @@ async def upload_contract(
         filename: Original file name.
         raw_text: Full contract text.
         db: Request-scoped database session.
-        user_id: Authenticated user id.
+        current_user: Authenticated user.
 
     Returns:
         The created contract summary.
     """
     contract = await contract_service.create_contract(
         db,
-        user_id=user_id,
+        user_id=current_user.id,
         filename=filename,
         raw_text=raw_text,
     )
@@ -53,7 +54,7 @@ async def upload_contract(
 @router.get("/", response_model=PaginatedContractResponse)
 async def list_contracts(
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     status: str | None = Query(None, description="Filter by contract status"),
@@ -62,7 +63,7 @@ async def list_contracts(
 
     Args:
         db: Request-scoped database session.
-        user_id: Authenticated user id.
+        current_user: Authenticated user.
         limit: Page size (1–100).
         offset: Number of rows to skip.
         status: Optional status filter.
@@ -72,12 +73,12 @@ async def list_contracts(
     """
     total = await contract_service.get_contracts_count(
         db,
-        user_id=user_id,
+        user_id=current_user.id,
         status=status,
     )
     contracts = await contract_service.get_contracts(
         db,
-        user_id=user_id,
+        user_id=current_user.id,
         limit=limit,
         offset=offset,
         status=status,
@@ -94,14 +95,14 @@ async def list_contracts(
 async def get_contract(
     contract_id: int,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
 ) -> ContractDetailResponse:
     """Return one contract owned by the current user.
 
     Args:
         contract_id: Contract primary key.
         db: Request-scoped database session.
-        user_id: Authenticated user id.
+        current_user: Authenticated user.
 
     Returns:
         Contract detail including source text and clauses.
@@ -109,7 +110,7 @@ async def get_contract(
     Raises:
         HTTPException: 404 if the contract is missing or not owned by the user.
     """
-    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    contract = await contract_service.get_contract_by_id(db, contract_id, current_user.id)
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
     return ContractDetailResponse.model_validate(contract)
@@ -119,19 +120,19 @@ async def get_contract(
 async def delete_contract(
     contract_id: int,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """Delete one contract owned by the current user.
 
     Args:
         contract_id: Contract primary key.
         db: Request-scoped database session.
-        user_id: Authenticated user id.
+        current_user: Authenticated user.
 
     Raises:
         HTTPException: 404 if the contract is missing or not owned by the user.
     """
-    deleted = await contract_service.delete_contract(db, contract_id, user_id)
+    deleted = await contract_service.delete_contract(db, contract_id, current_user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Contract not found")
     return None
@@ -142,7 +143,7 @@ async def update_contract(
     contract_id: int,
     payload: ContractUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
 ) -> ContractDetailResponse:
     """Update selected fields on a contract owned by the current user.
 
@@ -150,7 +151,7 @@ async def update_contract(
         contract_id: Contract primary key.
         payload: Optional filename, raw_text, and status.
         db: Request-scoped database session.
-        user_id: Authenticated user id.
+        current_user: Authenticated user.
 
     Returns:
         Updated contract detail.
@@ -158,7 +159,7 @@ async def update_contract(
     Raises:
         HTTPException: 404 if missing or not owned; 409 on filename conflict.
     """
-    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    contract = await contract_service.get_contract_by_id(db, contract_id, current_user.id)
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
     try:
@@ -181,7 +182,7 @@ async def update_contract(
 async def extract_contract(
     contract_id: int,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user_id),
+    current_user: User = Depends(get_current_user),
     llm: LLMProvider = Depends(get_llm),
 ) -> list[ClauseResponse]:
     """Extract clauses from a contract using the configured LLM.
@@ -189,7 +190,7 @@ async def extract_contract(
     Args:
         contract_id: Contract primary key.
         db: Request-scoped database session.
-        user_id: Authenticated user id.
+        current_user: Authenticated user.
         llm: Injected LLM provider.
 
     Returns:
@@ -199,7 +200,7 @@ async def extract_contract(
         HTTPException: 404 if the contract is missing or not owned; 500 if the
             LLM output is invalid after retries.
     """
-    contract = await contract_service.get_contract_by_id(db, contract_id, user_id)
+    contract = await contract_service.get_contract_by_id(db, contract_id, current_user.id)
     if contract is None:
         raise HTTPException(status_code=404, detail="Contract not found")
     try:

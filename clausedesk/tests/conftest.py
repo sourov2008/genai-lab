@@ -11,7 +11,7 @@ from httpx import ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user
 from app.db.session import get_db
 from app.llm.base import LLMProvider, LLMRequest, LLMResponse, LLMUsage
 from app.llm.factory import get_llm
@@ -151,11 +151,11 @@ async def client(
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield test_db
 
-    async def override_user_id() -> int:
-        return 1
+    async def override_get_current_user() -> User:
+        return User(id=1, email="test@clausedesk.local")
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_id] = override_user_id
+    app.dependency_overrides[get_current_user] = override_get_current_user
     transport = ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as http_client:
         yield http_client

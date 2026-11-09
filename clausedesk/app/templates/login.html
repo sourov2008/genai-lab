@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — ClauseDesk{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center min-vh-100 bg-light">
+  <div class="card shadow-sm border-0" style="width: 100%; max-width: 400px;">
+    <div class="card-body p-5">
+      <h3 class="text-center mb-4 fw-bold">Sign In</h3>
+      {% if error_message %}
+      <div class="alert alert-danger mb-3">{{ error_message }}</div>
+      {% endif %}
+      <form method="POST" action="/ui/login">
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input
+            type="email"
+            name="email"
+            id="email"
+            class="form-control form-control-lg"
+            required
+          >
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input
+            type="password"
+            name="password"
+            id="password"
+            class="form-control form-control-lg"
+            required
+          >
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">Sign In</button>
+      </form>
+      <hr class="my-4">
+      <div class="text-center text-muted">
+        Don't have an account?
+        <a href="/ui/signup" class="text-decoration-none fw-bold">Sign up</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

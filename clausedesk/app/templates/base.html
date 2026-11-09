@@ -20,6 +20,12 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container">
         <a class="navbar-brand" href="/ui">ClauseDesk</a>
+        <div class="d-flex align-items-center ms-auto">
+          {% if current_user %}
+          <span class="text-light me-3">Logged in as: {{ current_user.email }}</span>
+          <a class="btn btn-outline-light btn-sm" href="/ui/logout">Logout</a>
+          {% endif %}
+        </div>
       </div>
     </nav>
     <div class="container mt-4">
