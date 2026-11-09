@@ -1,3 +1,5 @@
+![CI](https://github.com/sourov2008/genai-lab/actions/workflows/ci.yml/badge.svg)
+
 # ClauseDesk: Contract clause extraction with verified citations.
 
 ClauseDesk reads English commercial contracts, extracts a fixed set of clause types, and keeps every result tied to a source quote. Code verifies citations; a human reviews what counts. This is not a chatbot and not a drafting tool.
