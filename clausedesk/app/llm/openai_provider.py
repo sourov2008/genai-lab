@@ -7,7 +7,8 @@ import time
 import uuid
 
 import openai
-from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
+from langfuse.openai import AsyncOpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError
 
 from app.core.config import Settings
 from app.llm.base import LLMProvider, LLMRequest, LLMResponse, LLMUsage
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIProvider(LLMProvider):
-    """LLMProvider backed by the official OpenAI async SDK."""
+    """LLMProvider backed by the Langfuse-traced OpenAI async SDK."""
 
     def __init__(self, api_key: str, model: str, timeout_s: float = 30.0) -> None:
         """Create an OpenAI client for a single model.

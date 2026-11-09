@@ -5,8 +5,15 @@ from __future__ import annotations
 import json
 import logging
 
+from langfuse import Langfuse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+try:
+    from langfuse.decorators import observe
+except ImportError:
+    from langfuse import observe
+
+from app.core.config import get_settings
 from app.llm.base import LLMProvider, LLMRequest, Message
 from app.models import Contract
 from app.services.agent_tools import (
@@ -68,6 +75,29 @@ async def _execute_tool(db: AsyncSession, name: str, args: dict) -> dict | list[
     return {"error": f"Unknown tool: {name}"}
 
 
+def _langfuse_client() -> Langfuse:
+    """Return a Langfuse client that no-ops when keys are missing."""
+    settings = get_settings()
+    enabled = bool(settings.langfuse_public_key and settings.langfuse_secret_key)
+    return Langfuse(
+        public_key=settings.langfuse_public_key or None,
+        secret_key=settings.langfuse_secret_key or None,
+        tracing_enabled=enabled,
+    )
+
+
+def _start_tool_span(langfuse: Langfuse, tool_name: str):
+    """Open a current span for one tool call (v4 `start_as_current_span` or v5)."""
+    start_span = getattr(langfuse, "start_as_current_span", None)
+    if callable(start_span):
+        return start_span(name=f"tool_{tool_name}")
+    return langfuse.start_as_current_observation(
+        name=f"tool_{tool_name}",
+        as_type="tool",
+    )
+
+
+@observe(name="agent_compliance_check")
 async def run_compliance_check(
     db: AsyncSession,
     contract: Contract,
@@ -87,6 +117,7 @@ async def run_compliance_check(
         model stops.
     """
     tools_called: list[str] = []
+    langfuse = _langfuse_client()
     messages: list[Message] = [
         Message(role="system", content=_SYSTEM_PROMPT),
         Message(
@@ -138,7 +169,9 @@ async def run_compliance_check(
             name = tc["function"]["name"]
             args = _tool_arguments(tc)
             logger.info("Agent tool call step=%s name=%s", step + 1, name)
-            result = await _execute_tool(db, name, args)
+            with _start_tool_span(langfuse, name) as span:
+                result = await _execute_tool(db, name, args)
+                span.update(input=args, output=result)
             messages.append(
                 Message.model_validate(
                     {
