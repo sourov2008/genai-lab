@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.llm.base import LLMProvider
+from app.llm.embeddings import get_embedding
 from app.llm.errors import LLMBadRequestError
 from app.llm.factory import get_llm
 from app.models import User
@@ -20,6 +21,7 @@ from app.schemas.contract import (
     PaginatedContractResponse,
 )
 from app.services import contract_service, extraction_service
+from app.services.contract_service import search_clauses_by_vector
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -89,6 +91,29 @@ async def list_contracts(
         offset=offset,
         items=[ContractUploadResponse.model_validate(c) for c in contracts],
     )
+
+
+@router.get("/search", response_model=list[ClauseResponse])
+async def search_contracts(
+    q: str = Query(..., description="Search query"),
+    limit: int = 5,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[ClauseResponse]:
+    """Return clauses nearest to the query embedding.
+
+    Args:
+        q: Natural-language search text.
+        limit: Maximum number of clauses to return.
+        db: Request-scoped database session.
+        current_user: Authenticated user.
+
+    Returns:
+        Ranked clause payloads. Embedding-only; not stored as a prompt run.
+    """
+    query_vector = await get_embedding(q)
+    clauses = await search_clauses_by_vector(db, query_vector, limit)
+    return [ClauseResponse.model_validate(clause) for clause in clauses]
 
 
 @router.get("/{contract_id}", response_model=ContractDetailResponse)
