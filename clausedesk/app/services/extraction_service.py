@@ -16,6 +16,7 @@ from app.llm.retry import with_retry
 from app.models import Clause, Contract, PromptRun
 from app.models.contract import ContractStatus
 from app.schemas.extraction import ExtractionResult
+from app.services.n8n_service import send_error_alert
 from app.services.verification_service import verify_clause
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,7 @@ async def extract_clauses_from_contract(
             prompt_run.error = str(exc)
             contract.status = ContractStatus.FAILED.value
             await db.commit()
+            await send_error_alert(contract.id, str(exc))
             raise LLMBadRequestError(
                 "LLM failed to generate valid JSON after 2 attempts"
             ) from exc

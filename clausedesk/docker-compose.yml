@@ -32,5 +32,20 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/clausedesk
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: clausedesk-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      GENERIC_TIMEZONE: Europe/Berlin
+      N8N_ENCRYPTION_KEY: cdbe548e1cb29a67937c87945b5d1db04c3622fd0a698b57d27fcffce7561b1c
+    volumes:
+      - n8n_data:/home/node/.n8n
+
 volumes:
   clausedesk_pgdata:
+  n8n_data:
