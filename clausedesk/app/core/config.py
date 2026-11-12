@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 10080
 
+    n8n_webhook_url: str = Field(default="", alias="N8N_WEBHOOK_URL")
+    n8n_webhook_secret: str = Field(default="", alias="N8N_WEBHOOK_SECRET")
+
     model_pricing: dict[str, ModelPricing] = {
         "gpt-4o-mini": ModelPricing(input_per_1m=0.15, output_per_1m=0.60),
         "openai/gpt-oss-120b": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
