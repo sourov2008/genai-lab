@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -104,7 +105,10 @@ async def validation_exception_handler(
     """
     return JSONResponse(
         status_code=422,
-        content={"error": "Validation Error", "details": exc.errors()},
+        content={
+            "error": "Validation Error",
+            "details": jsonable_encoder(exc.errors()),
+        },
     )
 
 

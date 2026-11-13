@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -16,7 +16,7 @@ from app.db.session import get_db
 from app.models import User
 
 pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+security = HTTPBearer(auto_error=False)
 
 
 def get_password_hash(password: str) -> str:
@@ -86,14 +86,14 @@ def decode_access_token(token: str) -> dict:
 async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    token: str | None = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> User:
     """Resolve the authenticated user from a bearer token or cookie.
 
     Args:
-        request: Incoming HTTP request (cookie fallback).
+        request: Incoming HTTP request (cookie fallback for the HTML UI).
         db: Request-scoped database session.
-        token: Optional OAuth2 bearer token.
+        credentials: Optional HTTP Bearer credentials from Swagger or API clients.
 
     Returns:
         The authenticated `User` row.
@@ -102,8 +102,11 @@ async def get_current_user(
         HTTPException: 401 if the token is missing, invalid, or the user
             does not exist.
     """
-    if token is None:
-        token = request.cookies.get("access_token")
+    token = (
+        credentials.credentials
+        if credentials is not None
+        else request.cookies.get("access_token")
+    )
     if token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -122,7 +125,14 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
-    result = await db.execute(select(User).where(User.id == int(user_id)))
+    try:
+        user_pk = int(user_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        ) from exc
+    result = await db.execute(select(User).where(User.id == user_pk))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(
