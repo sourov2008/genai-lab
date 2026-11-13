@@ -84,6 +84,38 @@ This workflow pulls `GET /analytics/daily-digest` once a day and sends a readabl
 
 ---
 
+## Content Intake Pipeline
+
+This workflow uploads a contract file to `POST /contracts/`. The API expects **multipart/form-data** with a binary field named `file` (not JSON and not `filename` / `raw_text` form strings). The request requires a JWT (`get_current_user`). The file must be UTF-8 text; the stored name is the uploaded filename.
+
+1. **Create a new workflow in n8n.**
+   - Open n8n (local Docker: http://localhost:5678).
+   - New workflow. Name it something like `ClauseDesk content intake`.
+
+2. **Add a "Manual Trigger" node (for testing).**
+   - Use **Manual Trigger** so you can click **Execute Workflow** without waiting on a schedule or webhook.
+
+3. **Add a "Read Binary File" node (pointing to a local test file) OR a "Set" node to generate dummy data.**
+   - **Read Binary File:** path to a `.txt` contract inside the n8n data volume (for example `/home/node/.n8n/test-contract.txt`). The node should output binary property `data`.
+   - **Or Set:** create dummy UTF-8 text and convert it to binary named `data` if you do not have a file on disk yet.
+   - Connect Manual Trigger → Read Binary File (or Set).
+
+4. **Add an "HTTP Request" node:**
+   - Method: **POST**.
+   - URL: `http://host.docker.internal:8000/contracts/` (n8n in Docker reaching the API on the host). If the API runs in Compose as `api`, you can use `http://api:8000/contracts/` instead.
+   - Authentication: **Generic Credential Type** (Bearer Token) → paste the JWT from `POST /auth/login` (store it in n8n credentials; do not hard-code it in an export).
+   - Body Content Type: **multipart/form-data**.
+   - Body Parameters:
+     - Name: `file`
+     - Type: **n8n Binary File**
+     - Value: `data` (binary property from the previous node)
+   - Connect Read Binary File (or Set) → HTTP Request.
+
+5. **Activate the workflow.**
+   - Save, **Activate**, then **Execute Workflow**. A `201`/`200` body with `id`, `filename`, and `status` means the contract was created. Check `/docs` or `GET /contracts/` to confirm.
+
+---
+
 ## Importing an exported workflow JSON
 
 After you export the workflow from n8n (workflow menu → **Download** / **Export**), store the JSON with the project (for example `docs/n8n_error_alert.json`) and import it on another machine as follows.

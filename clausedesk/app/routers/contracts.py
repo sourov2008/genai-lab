@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,22 +28,37 @@ router = APIRouter(prefix="/contracts", tags=["contracts"])
 
 @router.post("/", response_model=ContractUploadResponse)
 async def upload_contract(
-    filename: str = Form(...),
-    raw_text: str = Form(...),
+    file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ContractUploadResponse:
-    """Create a contract from multipart form fields.
+    """Create a contract from a multipart file upload (n8n-compatible).
 
     Args:
-        filename: Original file name.
-        raw_text: Full contract text.
+        file: Uploaded contract file (`multipart/form-data` field name `file`).
         db: Request-scoped database session.
         current_user: Authenticated user.
 
     Returns:
         The created contract summary.
+
+    Raises:
+        HTTPException: 400 if the filename is missing or the bytes are not UTF-8 text.
     """
+    filename = file.filename
+    if not filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file must include a filename",
+        )
+    content = await file.read()
+    try:
+        raw_text = content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file must be UTF-8 text",
+        ) from exc
     contract = await contract_service.create_contract(
         db,
         user_id=current_user.id,
