@@ -33,7 +33,7 @@ async def daily_digest(
         Aggregated digest for the rolling 24-hour window.
     """
     _ = current_user
-    time_24h_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+    time_24h_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=24)
 
     runs_row = (
         await db.execute(
