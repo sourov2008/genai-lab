@@ -15,6 +15,7 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.session import get_engine
+from app.routers.analytics import router as analytics_router
 from app.routers.auth import auth_router
 from app.routers.contracts import router as contracts_router
 from app.routers.ui import router as ui_router
@@ -38,6 +39,10 @@ tags_metadata = [
     {
         "name": "webhooks",
         "description": "Inbound callbacks from automation tools such as n8n.",
+    },
+    {
+        "name": "analytics",
+        "description": "Usage digest for token counts, cost, and contract volume.",
     },
 ]
 
@@ -75,6 +80,7 @@ app.include_router(auth_router)
 app.include_router(contracts_router)
 app.include_router(ui_router)
 app.include_router(webhooks_router)
+app.include_router(analytics_router)
 
 _APP_DIR = Path(__file__).resolve().parent
 (_APP_DIR / "templates").mkdir(parents=True, exist_ok=True)

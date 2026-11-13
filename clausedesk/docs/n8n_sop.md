@@ -46,6 +46,44 @@ If `N8N_WEBHOOK_URL` is empty, the API logs a warning and skips the POST. If n8n
 
 ---
 
+## Daily Eval Digest
+
+This workflow pulls `GET /analytics/daily-digest` once a day and sends a readable summary (token usage, cost, contracts processed/failed for the last 24 hours). The endpoint requires a JWT (`get_current_user`).
+
+1. **Create a new workflow in n8n.**
+   - Open n8n (local Docker: http://localhost:5678).
+   - New workflow. Name it something like `ClauseDesk daily eval digest`.
+
+2. **Add a "Schedule Trigger" node (set to run daily at 9:00 AM).**
+   - Trigger interval: **Days**, every **1** day.
+   - Trigger at: **9:00 AM**.
+   - Timezone: match `GENERIC_TIMEZONE` on the n8n container (currently `Europe/Berlin`) so 9:00 is the hour you expect.
+
+3. **Add an "HTTP Request" node: GET `http://host.docker.internal:8000/analytics/daily-digest` (Requires Bearer Token).**
+   - Method: **GET**.
+   - URL: `http://host.docker.internal:8000/analytics/daily-digest` (n8n in Docker reaching the API on the host). If the API also runs in Compose as `api`, you can use `http://api:8000/analytics/daily-digest` instead.
+   - Authentication: **Generic Credential Type** → **Header Auth**, or set header `Authorization` to `Bearer <JWT>`.
+   - Obtain a token from `POST /auth/login`, then store it in n8n credentials (do not hard-code it in the exported JSON).
+   - Connect Schedule Trigger → HTTP Request.
+
+4. **Add a "Send Email" or "Slack" node to format the JSON data into a readable message and send it.**
+   - Connect HTTP Request → **Send Email** or **Slack**.
+   - Example body using the digest keys:
+
+     ```
+     ClauseDesk daily digest (last {{ $json.period_hours }}h)
+     Runs: {{ $json.total_runs }}
+     Input tokens: {{ $json.total_input_tokens }}
+     Output tokens: {{ $json.total_output_tokens }}
+     Cost USD: {{ $json.total_cost_usd }}
+     Contracts processed: {{ $json.contracts_processed }}
+     Contracts failed: {{ $json.contracts_failed }}
+     ```
+
+   - Activate the workflow. Use **Execute Workflow** once to confirm email/Slack before waiting for 9:00 AM.
+
+---
+
 ## Importing an exported workflow JSON
 
 After you export the workflow from n8n (workflow menu → **Download** / **Export**), store the JSON with the project (for example `docs/n8n_error_alert.json`) and import it on another machine as follows.
